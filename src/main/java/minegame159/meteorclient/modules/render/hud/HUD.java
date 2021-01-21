@@ -22,6 +22,7 @@ import minegame159.meteorclient.utils.render.AlignmentX;
 import minegame159.meteorclient.utils.render.AlignmentY;
 import minegame159.meteorclient.utils.render.color.Color;
 import minegame159.meteorclient.utils.render.color.SettingColor;
+import net.minecraft.item.Item;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
@@ -39,6 +40,7 @@ public class HUD extends Module {
     private final SettingGroup sgArmor = settings.createGroup("Armor");
     private final SettingGroup sgModuleInfo = settings.createGroup("Module Info");
     private final SettingGroup sgCompass = settings.createGroup("Compass");
+    private final SettingGroup sgItemCounts = settings.createGroup("Item Counts");
 
 
     private final ActiveModulesHud activeModulesHud = new ActiveModulesHud(this);
@@ -79,11 +81,11 @@ public class HUD extends Module {
 
     // Active Modules
     private final Setting<ActiveModulesHud.Sort> activeModulesSort = sgActiveModules.add(new EnumSetting.Builder<ActiveModulesHud.Sort>()
-            .name("active-modules-sort")
-            .description("How to sort active modules.")
-            .defaultValue(ActiveModulesHud.Sort.ByBiggest)
+                    .name("active-modules-sort")
+                    .description("How to sort active modules.")
+                    .defaultValue(ActiveModulesHud.Sort.ByBiggest)
 //            .onChanged(sort -> activeModulesHud.recalculate())
-            .build()
+                    .build()
     );
 
     private final Setting<Boolean> activeInfo = sgActiveModules.add(new BoolSetting.Builder()
@@ -122,6 +124,25 @@ public class HUD extends Module {
             .defaultValue(0.025)
             .sliderMax(0.05)
             .decimalPlaces(4)
+            .build()
+    );
+
+    //Item Counts
+    private final Setting<List<Item>> itemCounts = sgItemCounts.add(new ItemListSetting.Builder()
+            .name("display-items")
+            .description("Items to show the count of on your screen. Reset hud after selecting for them to show up.")
+            .defaultValue(new ArrayList<>(0))
+            .onChanged(this::addModulesFromItemList)
+            .build()
+    );
+
+    private final Setting<Double> itemCountScale = sgItemCounts.add(new DoubleSetting.Builder()
+            .name("item-scale")
+            .description("Scale of items drawn for item counters.")
+            .defaultValue(4)
+            .min(1)
+            .sliderMin(2)
+            .sliderMax(5)
             .build()
     );
 
@@ -247,11 +268,11 @@ public class HUD extends Module {
 
     // Module Info
     private final Setting<List<Module>> moduleInfoModules = sgModuleInfo.add(new ModuleListSetting.Builder()
-            .name("module-info-modules")
-            .description("Which modules to display")
-            .defaultValue(moduleInfoModulesDefaultValue())
+                    .name("module-info-modules")
+                    .description("Which modules to display")
+                    .defaultValue(moduleInfoModulesDefaultValue())
 //            .onChanged(toggleModules -> moduleInfoHud.recalculate())
-            .build()
+                    .build()
     );
 
     private final Setting<Boolean> moduleInfo = sgModuleInfo.add(new BoolSetting.Builder()
@@ -297,7 +318,6 @@ public class HUD extends Module {
 
     public HUD() {
         super(Category.Render, "HUD", "In game overlay.");
-
         init();
     }
 
@@ -348,7 +368,7 @@ public class HUD extends Module {
         HudModuleLayer bottomCenter = new HudModuleLayer(RENDERER, modules, AlignmentX.Center, AlignmentY.Bottom, 48, 64);
         bottomCenter.add(new ArmorHud(this));
         bottomCenter.add(new CompassHud(this));
-        bottomCenter.add(new TotemHud(this));
+        for (Item item : itemCounts.get()) bottomCenter.add(new ItemCountHud(this, item));
 
         // Bottom Right
         HudModuleLayer bottomRight = new HudModuleLayer(RENDERER, modules, AlignmentX.Right, AlignmentY.Bottom, 2, 2);
@@ -424,6 +444,43 @@ public class HUD extends Module {
         return null;
     }
 
+    private void addModulesFromItemList(List<Item> items) {
+        if (items.isEmpty()) modules.removeIf(module -> module instanceof ItemCountHud);
+        else {
+            for (HudModule module : modules) {
+                if (!(module instanceof ItemCountHud)) continue;
+
+                boolean shouldRemove = true;
+
+                for (Item item : items) {
+                    if (((ItemCountHud) module).item == item) {
+                        shouldRemove = false;
+                        break;
+                    }
+                }
+
+                if (shouldRemove) modules.remove(module);
+            }
+
+            HudModuleLayer bottomCenter = new HudModuleLayer(RENDERER, modules, AlignmentX.Center, AlignmentY.Bottom, 48, 64);
+
+            for (Item item : items) {
+                boolean shouldAdd = true;
+
+                for (HudModule module : modules) {
+                    if (!(module instanceof ItemCountHud)) continue;
+
+                    if (((ItemCountHud) module).item == item) {
+                        shouldAdd = false;
+                        break;
+                    }
+                }
+
+                if (shouldAdd) bottomCenter.add(new ItemCountHud(this, item));
+            }
+        }
+    }
+
     public double scale() {
         return scale.get();
     }
@@ -454,6 +511,10 @@ public class HUD extends Module {
     }
     public double activeModulesRainbowSpread() {
         return activeModulesRainbowSpread.get();
+    }
+
+    public double itemCountScale() {
+        return itemCountScale.get();
     }
 
     public InventoryViewerHud.Background invViewerBackground() {
@@ -522,3 +583,4 @@ public class HUD extends Module {
         return compassMode.get();
     }
 }
+
