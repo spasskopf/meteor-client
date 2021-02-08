@@ -174,7 +174,7 @@ public class NoRender extends Module {
             .defaultValue(false)
             .build()
     );
-    
+
     private final Setting<Boolean> noSkylightUpdates = sgGeneral.add(new BoolSetting.Builder()
             .name("no-skylight-updates")
             .description("Disables rendering of skylight updates. Useful for lag machines")
@@ -189,8 +189,19 @@ public class NoRender extends Module {
             .build()
     );
 
+    private final Setting<Boolean> noBeaconBeam = sgGeneral.add(new BoolSetting.Builder()
+            .name("no-beacon-beam")
+            .description("Disables rendering of Beacon beams.")
+            .defaultValue(false)
+            .build()
+    );
+
     public NoRender() {
         super(Category.Render, "no-render", "Disables certain animations or overlays from rendering.");
+    }
+
+    public boolean noBeaconBeam(){
+        return isActive() && noBeaconBeam.get();
     }
 
     public boolean noHurtCam() {
@@ -284,7 +295,7 @@ public class NoRender extends Module {
     public boolean noEatParticles() {
         return isActive() && noEatParticles.get();
     }
-    
+
     public boolean noSkylightUpdates() {
         return isActive() && noSkylightUpdates.get();
     }

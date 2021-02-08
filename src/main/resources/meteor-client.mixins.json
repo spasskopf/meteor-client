@@ -13,6 +13,7 @@
     "AxeItemAccessor",
     "BackgroundRendererMixin",
     "BakedQuadMixin",
+    "BeaconMixin",
     "BlockEntityRenderDispatcherMixin",
     "BlockEntityTypeAccessor",
     "BlockHitResultMixin",
