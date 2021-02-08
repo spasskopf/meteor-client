@@ -196,11 +196,22 @@ public class NoRender extends Module {
             .build()
     );
 
+    private final Setting<Boolean> noEndGateway = sgGeneral.add(new BoolSetting.Builder()
+            .name("no-end-gateway")
+            .description("Disables rendering of End Gateways.")
+            .defaultValue(false)
+            .build()
+    );
+
     public NoRender() {
         super(Category.Render, "no-render", "Disables certain animations or overlays from rendering.");
     }
 
-    public boolean noBeaconBeam(){
+    public boolean noEndGateway() {
+        return isActive() && noEndGateway.get();
+    }
+
+    public boolean noBeaconBeam() {
         return isActive() && noBeaconBeam.get();
     }
 

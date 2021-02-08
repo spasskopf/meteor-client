@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(BeaconBlockEntityRenderer.class)
-public class BeaconMixin {
+public class BeaconBlockEntityRendererMixin {
 
     @Inject(method = "renderLightBeam", at = @At("HEAD"), cancellable = true)
     private static void onRenderBeaconBeam(MatrixStack matrixStack, VertexConsumerProvider vertexConsumerProvider, Identifier identifier, float f, float g, long l, int i, int j, float[] fs, float h, float k, CallbackInfo ci) {
