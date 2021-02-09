@@ -107,7 +107,8 @@
     "WorldRendererAccessor",
     "WorldRendererMixin",
     "TridentItemMixin",
-    "ModelPredicateProviderRegistryMixin"
+    "ModelPredicateProviderRegistryMixin",
+    "ItemStackAccessor"
   ],
   "injectors": {
     "defaultRequire": 1
