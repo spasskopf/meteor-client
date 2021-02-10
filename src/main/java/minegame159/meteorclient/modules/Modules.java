@@ -426,6 +426,7 @@ public class Modules extends System<Modules> {
         addModule(new AutoSign());
         addModule(new AutoSmelter());
         addModule(new AutoSteal());
+        addModule(new AutoTrade());
         addModule(new BetterChat());
         addModule(new BookBot());
         addModule(new DiscordPresence());
