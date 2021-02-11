@@ -11,30 +11,40 @@ import minegame159.meteorclient.settings.Setting;
 import minegame159.meteorclient.settings.SettingGroup;
 import minegame159.meteorclient.utils.entity.EntityUtils;
 import minegame159.meteorclient.utils.entity.SortPriority;
-import minegame159.meteorclient.utils.misc.text.TextUtils;
 import minegame159.meteorclient.utils.player.ChatUtils;
 import minegame159.meteorclient.utils.world.BlockUtils;
 import net.minecraft.block.BlockState;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.enchantment.Enchantment;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.ai.brain.MemoryModuleType;
 import net.minecraft.entity.passive.VillagerEntity;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket;
 import net.minecraft.text.Text;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.village.TradeOffer;
 import net.minecraft.village.TradeOffers;
 import net.minecraft.village.VillagerProfession;
 
-import javax.swing.plaf.nimbus.State;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class AutoTrade extends Module {
 
     private static final Map<VillagerProfession, Item> WORKSTATION = new HashMap<>();
     private static final String PREFIX;
+
+
+
     static {
+
         PREFIX = "[AutoTrade]";
         WORKSTATION.put(VillagerProfession.ARMORER, Items.BLAST_FURNACE);
         WORKSTATION.put(VillagerProfession.BUTCHER, Items.SMOKER);
@@ -49,6 +59,8 @@ public class AutoTrade extends Module {
         WORKSTATION.put(VillagerProfession.MASON, Items.STONECUTTER);
         WORKSTATION.put(VillagerProfession.WEAPONSMITH, Items.GRINDSTONE);
         WORKSTATION.put(VillagerProfession.TOOLSMITH, Items.SMITHING_TABLE);
+
+
     }
 
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
@@ -59,6 +71,7 @@ public class AutoTrade extends Module {
     private final BlockPos.Mutable blockPos = new BlockPos.Mutable();
     private final VillagerProfession profession = VillagerProfession.LIBRARIAN;
     private boolean didStateChange = false;
+
     private final Setting<Double> range = sgGeneral.add(new DoubleSetting.Builder()
             .name("range")
             .description("The maximum range the villager can be to interact with it.")
@@ -73,18 +86,14 @@ public class AutoTrade extends Module {
         super(Category.Misc, "auto-trade", "Automatically trades with Villagers");
     }
 
+
     @Override
     public void onActivate() {
-        TradeOffers.PROFESSION_TO_LEVELED_TRADE.forEach((villagerProfession, int2ObjectMap) -> {
-            ChatUtils.info("Profession: %s", villagerProfession.toString());
-            for (Int2ObjectMap.Entry<TradeOffers.Factory[]> entry : int2ObjectMap.int2ObjectEntrySet()) {
-                for (TradeOffers.Factory factory : entry.getValue()) {
-                    ChatUtils.info("   Factory: %s", factory.getClass().getSimpleName());
-                }
-            }
 
-        });
-    }
+
+        state = State.WAITING_FOR_VILLAGER_IN_RANGE;
+        villager = null;
+     }
 
     @Override
     public void onDeactivate() {
@@ -99,50 +108,95 @@ public class AutoTrade extends Module {
         }
 
         if (state == State.WAITING_FOR_VILLAGER_IN_RANGE || villager == null) {
-            if (didStateChange) {
-                ChatUtils.info(PREFIX, Text.of("Checking for villagers in range..."));
-                didStateChange = false;
-            }
-
-            if (mc.player.isDead() || !mc.player.isAlive()) {
-                villager = null;
-                return;
-            }
-
-            villager = (VillagerEntity) EntityUtils.get(entity -> {
-                if (entity == mc.player || entity == mc.cameraEntity) {
-                    return false;
-                }
-                if ((entity instanceof LivingEntity && ((LivingEntity) entity).isDead()) || !entity.isAlive()) {
-                    return false;
-                }
-                if (entity.distanceTo(mc.player) > range.get()) {
-                    return false;
-                }
-
-                return entity instanceof VillagerEntity;
-            }, SortPriority.LowestDistance);
-            if (villager != null) {
-                state = State.WAITING_FOR_JOB;
-                ChatUtils.info("Waiting for job!");
-            }
+            scanForVillagerInRange();
         } else if (state == State.WAITING_FOR_JOB) {
-            if (villager.getVillagerData().getProfession() == VillagerProfession.NONE) {
-                final Direction direction = getDirection();
-                if (place(direction.getX(), 0, direction.getZ())) {
-                    ChatUtils.info("Placed Workstation!");
-                } else {
-                    ChatUtils.error("Could not find / place Workstation");
-                    state = State.WAITING_FOR_VILLAGER_IN_RANGE;
-                    this.toggle(false);
-                }
-            } else if (villager.getVillagerData().getProfession() == profession) {
-                state = State.CHECKING_TRADE;
-                ChatUtils.info("Found villager with correct profession!");
-            }
+            scanForJob();
+        } else if (state == State.CHECKING_TRADE) {
+            if (checkTrade()) {
 
+            } else {
+                ChatUtils.info("Removing Workstation!");
+                removeWorkStation();
+            }
         }
 
+    }
+
+    private void removeWorkStation() {
+        final BlockPos workstation;
+        try {
+            workstation = villager.getBrain().getOptionalMemory(MemoryModuleType.JOB_SITE).get().getPos();
+            mine(workstation);
+            state = State.WAITING_FOR_JOB;
+        } catch (Exception e) {
+            ChatUtils.info("Could not get Workstation from Villager!");
+            //e.printStackTrace();
+        }
+
+
+    }
+
+    /**
+     * @return true if the villager's trade is the right trade
+     */
+    private boolean checkTrade() {
+        for (TradeOffer offer : villager.getOffers()) {
+            if (offer.getMutableSellItem().getItem() == Items.ENCHANTED_BOOK) {
+                ChatUtils.info("villager sells book!" + offer.getMutableSellItem().getItem().toString());
+                for (String enchantment : getEnchantMents(offer.getMutableSellItem())) {
+                    ChatUtils.info("Enchantment: %s", enchantment);
+                }
+            }
+        }
+        //TODO:
+
+        return false;
+
+    }
+
+    private void scanForJob() {
+        if (villager.getVillagerData().getProfession() == VillagerProfession.NONE) {
+            final Direction direction = getDirection();
+            if (place(direction.getX(), 0, direction.getZ())) {
+                ChatUtils.info("Placed Workstation!");
+            } else {
+                ChatUtils.error("Could not find / place Workstation");
+                this.toggle(false);
+            }
+        } else if (villager.getVillagerData().getProfession() == profession) {
+            state = State.CHECKING_TRADE;
+            ChatUtils.info("Found villager with correct profession!");
+        }
+    }
+
+    private void scanForVillagerInRange() {
+        if (didStateChange) {
+            ChatUtils.info(PREFIX, Text.of("Checking for villagers in range..."));
+            didStateChange = false;
+        }
+
+        if (mc.player.isDead() || !mc.player.isAlive()) {
+            villager = null;
+            return;
+        }
+
+        villager = (VillagerEntity) EntityUtils.get(entity -> {
+            if (entity == mc.player || entity == mc.cameraEntity) {
+                return false;
+            }
+            if ((entity instanceof LivingEntity && ((LivingEntity) entity).isDead()) || !entity.isAlive()) {
+                return false;
+            }
+            if (entity.distanceTo(mc.player) > range.get()) {
+                return false;
+            }
+
+            return entity instanceof VillagerEntity;
+        }, SortPriority.LowestDistance);
+        if (villager != null) {
+            state = State.WAITING_FOR_JOB;
+            ChatUtils.info("Waiting for job!");
+        }
     }
 
 
@@ -151,7 +205,11 @@ public class AutoTrade extends Module {
         ChatUtils.info("Listener Called! Event Type: %s Profession: %s/%s",
                 event.action, event.oldData.getProfession(), event.newData.getProfession()
         );
-
+        if (event.action == VillagerUpdateProfessionEvent.Action.LOST_JOB) {
+            if (event.entity.equals(villager)) {
+                state = State.WAITING_FOR_JOB;
+            }
+        }
     }
 
     @Override
@@ -177,7 +235,43 @@ public class AutoTrade extends Module {
         }
     }
 
-    //<editor-fold desc="Stuff that was private in other classes...">
+    //<editor-fold desc="Stuff. was  private in other classes...">
+    public static String[] getEnchantMents(ItemStack itemStack) {
+        CompoundTag tag = itemStack.getOrCreateTag();
+        ListTag listTag;
+
+        // Get list tag
+        if (!tag.contains("Enchantments", 9)) {
+            listTag = new ListTag();
+            tag.put("Enchantments", listTag);
+        } else {
+            listTag = tag.getList("Enchantments", 10);
+        }
+        String[] enchantments = new String[listTag.size()];
+        for (int i = 0; i < listTag.size(); i++) {
+            Tag _t = listTag.get(i);
+            CompoundTag t = (CompoundTag) _t;
+
+
+            try {
+                enchantments[i] =
+                        Enchantment.byRawId(Integer.parseInt(t.getString("id")))
+                                + " "
+                                + t.getString("lvl");
+            } catch (NumberFormatException e) {
+                enchantments[i] =
+                        t.getString("id")
+                                + " "
+                                + t.getString("lvl");
+            }
+
+
+        }
+        return enchantments;
+
+    }
+
+
     private boolean place(int x, int y, int z) {
         setBlockPos(x, y, z);
         BlockState blockState = mc.world.getBlockState(blockPos);
@@ -220,7 +314,6 @@ public class AutoTrade extends Module {
             yaw += 360;
         }
         if (pitch < 0) {
-            pitch += 360;
         }
 
         if (yaw >= 337.5 || yaw < 22.5) {
@@ -275,6 +368,12 @@ public class AutoTrade extends Module {
         public int getZ() {
             return z;
         }
+    }
+
+    private void mine(BlockPos blockPos) {
+        mc.getNetworkHandler().sendPacket(new PlayerActionC2SPacket(PlayerActionC2SPacket.Action.START_DESTROY_BLOCK, blockPos, net.minecraft.util.math.Direction.UP));
+        mc.player.swingHand(Hand.MAIN_HAND);
+        mc.getNetworkHandler().sendPacket(new PlayerActionC2SPacket(PlayerActionC2SPacket.Action.STOP_DESTROY_BLOCK, blockPos, net.minecraft.util.math.Direction.UP));
     }
     //</editor-fold>
 }

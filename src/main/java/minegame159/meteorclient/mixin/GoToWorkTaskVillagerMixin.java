@@ -21,7 +21,8 @@ import java.util.Optional;
 public abstract class GoToWorkTaskVillagerMixin {
 
     /**
-     * @author spasskopf
+     * @author notch or someone else & spasskopf
+     * @reason because i am lazy and couldn't fina another way
      */
     @Overwrite()
     public void run(ServerWorld serverWorld, VillagerEntity villagerEntity, long l) {
