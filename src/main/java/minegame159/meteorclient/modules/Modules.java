@@ -430,6 +430,7 @@ public class Modules extends System<Modules> {
         addModule(new AutoSmelter());
         addModule(new AutoSteal());
         addModule(new AutoTrade());
+        addModule(new AutoDiamond());
         addModule(new BetterChat());
         addModule(new BookBot());
         addModule(new DiscordPresence());
