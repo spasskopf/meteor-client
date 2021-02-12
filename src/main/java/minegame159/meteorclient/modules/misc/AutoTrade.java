@@ -93,7 +93,7 @@ public class AutoTrade extends Module {
 
         state = State.WAITING_FOR_VILLAGER_IN_RANGE;
         villager = null;
-     }
+    }
 
     @Override
     public void onDeactivate() {
