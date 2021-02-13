@@ -87,7 +87,6 @@ public class AutoTrade extends Module {
 
     public AutoTrade() {
         super(Category.Misc, "auto-trade", "Automatically trades with Villagers");
-        System.out.println("Hallo");
     }
 
 
