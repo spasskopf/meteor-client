@@ -8,11 +8,13 @@ import minegame159.meteorclient.events.world.TickEvent;
 import minegame159.meteorclient.modules.Category;
 import minegame159.meteorclient.modules.Module;
 import minegame159.meteorclient.settings.*;
+import minegame159.meteorclient.utils.network.MeteorExecutor;
 import minegame159.meteorclient.utils.player.ChatUtils;
 import net.minecraft.block.Block;
 import net.minecraft.network.packet.s2c.play.DisconnectS2CPacket;
 import net.minecraft.text.LiteralText;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -22,6 +24,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class AutoDiamond extends Module {
     public AutoDiamond() {
@@ -37,6 +40,7 @@ public class AutoDiamond extends Module {
     private int playerZ;
     private State state;
 
+    //<editor-fold desc="Settings">
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
     private final SettingGroup sgMining = settings.createGroup("Mine Diamonds");
     private final SettingGroup sgFinding = settings.createGroup("Find Diamonds");
@@ -102,12 +106,29 @@ public class AutoDiamond extends Module {
             .defaultValue(new ArrayList<>(0))
             .build()
     );
+    private final Setting<Boolean> smart = sgFinding.add(new BoolSetting.Builder()
+            .name("smart")
+            .description("Finds ore-clusters and mines cluster after cluster. Makes mining faster but searching takes longer (true = search for clusters)")
+            .defaultValue(false)
+            .build()
+    );
+
+    public final Setting<Integer> maxClusterSize = sgFinding.add(new IntSetting.Builder()
+            .name("max-cluster-size")
+            .description("Maximum size for a single cluster. Requires smart")
+            .defaultValue(10)
+            .min(1)
+            .max(100)
+            .sliderMax(100)
+            .build()
+    );
     private final Setting<String> output = sgFinding.add(new StringSetting.Builder()
             .name("output")
             .description("Location of the saved file.")
             .defaultValue(new File(MeteorClient.FOLDER, "info.txt").getAbsolutePath())
             .build()
     );
+    //</editor-fold>
 
 
     @Override
@@ -131,12 +152,10 @@ public class AutoDiamond extends Module {
         } else {
             try {
                 startSearching();
-            } catch (IOException e) {
+            } catch (Exception e) {
                 ChatUtils.error("An unexpected error occurred!");
                 ChatUtils.error(e.getMessage());
                 e.printStackTrace();
-            } finally {
-                toggle(false);
             }
         }
     }
@@ -179,43 +198,125 @@ public class AutoDiamond extends Module {
 
     }
 
-    int found = 0, currentBlock = 0, blocksToScan = 0;
+    int found = 0;
+    int currentBlock = 0;
+    int blocksToScan = 0;
 
     @SuppressWarnings("ResultOfMethodCallIgnored")
     private void startSearching() throws IOException {
-        if (mc.player == null) {
-            ChatUtils.error("Player is null. Disabling!");
-            return;
-        }
-        if (mc.player.world == null) {
-            ChatUtils.error("Player-World is null. Disabling!");
-            return;
-        }
-        if (maxHeight.get() < minHeight.get()) {
-            ChatUtils.error("Max height must not be less than Min height!");
-            return;
+        MeteorExecutor.execute(() -> {
+            try {
+                if (mc.player == null) {
+                    ChatUtils.error("Player is null. Disabling!");
+                    return;
+                }
+                if (mc.player.world == null) {
+                    ChatUtils.error("Player-World is null. Disabling!");
+                    return;
+                }
+                if (maxHeight.get() < minHeight.get()) {
+                    ChatUtils.error("Max height must not be less than Min height!");
+                    return;
+                }
+                long startTime = System.currentTimeMillis();
+                File file = new File(MeteorClient.FOLDER, "AutoDiamond_" + new SimpleDateFormat("yy_MM_dd_hh_mm_ss").format(new Date()));
+                File infoFile = new File(output.get());
+                if (!file.exists()) {
+                    file.createNewFile();
+                }
+                if (!infoFile.exists()) {
+                    infoFile.createNewFile();
+                }
+                FileWriter infoWriter = new FileWriter(infoFile);
+                infoWriter.write(file.getAbsolutePath());
+                infoWriter.write("\n0");
+                infoWriter.flush();
+                infoWriter.close();
+                ChatUtils.info("File has been saved to %s (use this file's path as  AutoDiamond input)!", infoFile.getAbsolutePath());
+
+                FileWriter writer = new FileWriter(file);
+
+                final int x = (int) mc.player.getPos().getX();
+                final int z = (int) mc.player.getPos().getZ();
+                final StringBuilder blocksFound = new StringBuilder();
+                if (!smart.get()) {
+                    searchDumb(x, z, blocksFound);
+                } else {
+                    searchMoreOrLessSmart(x, z, blocksFound);
+                }
+                writer.write(blocksFound.toString());
+                writer.flush();
+                writer.close();
+                ChatUtils.info("Finished Searching! File with all blocks: " + file.getAbsolutePath());
+                ChatUtils.info("Took %d Seconds!", TimeUnit.SECONDS.convert(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS));
+            } catch (IOException e) {
+                ChatUtils.error("An unexpected error occurred!");
+                ChatUtils.error(e.getMessage());
+                e.printStackTrace();
+            } finally {
+                toggle(false);
+            }
+        });
+    }
+
+    private void searchMoreOrLessSmart(int x, int z, StringBuilder blocksFound) {
+        blocksToScan = radius.get() * radius.get() * (maxHeight.get() - minHeight.get());
+        found = 0;
+        currentBlock = 0;
+        //TODO: initial capacity maybe makes it faster!
+        List<BlockPos> unScannedBlocks = new ArrayList<>();
+        for (int xPos = x - radius.get(); xPos < x + radius.get(); xPos++) {
+            for (int zPos = z - radius.get(); zPos < z + radius.get(); zPos++) {
+                for (int height = minHeight.get(); height < maxHeight.get(); height++) {
+                    unScannedBlocks.add(new BlockPos(xPos, height, zPos));
+                }
+            }
         }
 
-        File file = new File(MeteorClient.FOLDER, "AutoDiamond_" + new SimpleDateFormat("yy_MM_dd_hh_mm").format(new Date()));
-        File infoFile = new File(output.get());
-        if (!file.exists()) {
-            file.createNewFile();
-        }
-        if (!infoFile.exists()) {
-            infoFile.createNewFile();
-        }
-        FileWriter infoWriter = new FileWriter(infoFile);
-        infoWriter.write(file.getAbsolutePath());
-        infoWriter.write("\n0");
-        infoWriter.flush();
-        infoWriter.close();
-        ChatUtils.info("File has been saved to %s (use this file's path as  AutoDiamond input)!", infoFile.getAbsolutePath());
+        while (unScannedBlocks.size() > 0) {
+            if (unScannedBlocks.size() % 100 == 0) {
+                ChatUtils.info("Unscanned Blocks: %d", unScannedBlocks.size());
 
-        FileWriter writer = new FileWriter(file);
+            }
+            scanForCluster(unScannedBlocks, blocksFound, unScannedBlocks.get(0), 0);
+        }
 
-        final int x = (int) mc.player.getPos().getX();
-        final int z = (int) mc.player.getPos().getZ();
-        final StringBuilder blocksFound = new StringBuilder();
+    }
+
+    private void scanForCluster(List<BlockPos> unScanned, StringBuilder string, BlockPos start, int amountFound) {
+        //if scanForCluster has been called from the search method
+        //not recursively (otherwise amountFound wouldn't be 0)
+        if (amountFound == 0) {
+            if (blocks.get().contains(mc.player.world.getBlockState(start).getBlock())) {
+                appendBlockPos(string, start);
+            } else {
+                unScanned.remove(start);
+                return;
+            }
+        }
+        unScanned.remove(start);
+        if (amountFound >= maxClusterSize.get()) {
+            appendBlockPos(string, start);
+            return;
+        }
+        for (Direction direction : Direction.values()) {
+            final BlockPos next = start.add(direction.getVector());
+            if (unScanned.contains(next)) {
+                currentBlock++;
+                if (blocks.get().contains(mc.player.world.getBlockState(next).getBlock())) {
+                    amountFound++;
+                    found++;
+                    appendBlockPos(string, next);
+                    ChatUtils.info("Found Cluster of %s! Position: %s ", mc.player.world.getBlockState(next).toString(), next.toShortString());
+                    scanForCluster(unScanned, string, next, amountFound);
+                } else {
+                    unScanned.remove(next);
+                }
+            }
+        }
+    }
+
+    private void searchDumb(int x, int z, StringBuilder blocksFound) {
         blocksToScan = radius.get() * radius.get() * (maxHeight.get() - minHeight.get());
         found = 0;
         currentBlock = 0;
@@ -226,23 +327,21 @@ public class AutoDiamond extends Module {
                     currentBlock++;
                     if (blocks.get().contains(mc.player.world.getBlockState(blockPos).getBlock())) {
                         found++;
-                        blocksFound.append("[.b goto ")
-                                .append(blockPos.getX())
-                                .append(" ")
-                                .append(blockPos.getY())
-                                .append(" ")
-                                .append(blockPos.getZ())
-                                .append("]\n");
-
+                        appendBlockPos(blocksFound, blockPos);
                     }
                 }
             }
         }
-        writer.write(blocksFound.toString());
-        writer.flush();
-        writer.close();
-        ChatUtils.info("Finished Searching! File with all blocks: " + file.getAbsolutePath());
-        toggle(false);
+    }
+
+    private void appendBlockPos(StringBuilder blocksFound, BlockPos blockPos) {
+        blocksFound.append("[.b goto ")
+                .append(blockPos.getX())
+                .append(" ")
+                .append(blockPos.getY())
+                .append(" ")
+                .append(blockPos.getZ())
+                .append("]\n");
     }
 
     private void stop() {
