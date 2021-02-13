@@ -18,6 +18,8 @@ import minegame159.meteorclient.settings.StringSetting;
 import minegame159.meteorclient.utils.entity.FakePlayerEntity;
 import minegame159.meteorclient.utils.player.ChatUtils;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.network.packet.s2c.play.DisconnectS2CPacket;
+import net.minecraft.text.LiteralText;
 
 public class VisualRange extends Module {
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
@@ -50,6 +52,12 @@ public class VisualRange extends Module {
             .build()
     );
 
+    public final Setting<Boolean> autoDisconnect = sgGeneral.add(new BoolSetting.Builder()
+            .name("log-out")
+            .description("Logs out when someone enters your visual range.")
+            .defaultValue(false)
+            .build());
+
 
     public VisualRange() {
         super(Category.Misc, "visual-range", "Notifies you when a player enters/leaves your visual range.");
@@ -57,10 +65,16 @@ public class VisualRange extends Module {
 
     @EventHandler
     private void onEntityAdded(EntityAddedEvent event) {
-        if (event.entity.equals(mc.player) || !(event.entity instanceof PlayerEntity) || !Friends.get().attack((PlayerEntity) event.entity) && ignoreFriends.get() || (event.entity instanceof FakePlayerEntity && ignoreFakes.get())) return;
+        if (event.entity.equals(mc.player) || !(event.entity instanceof PlayerEntity) || !Friends.get().attack((PlayerEntity) event.entity) && ignoreFriends.get() || (event.entity instanceof FakePlayerEntity && ignoreFakes.get())) {
+            return;
+        }
 
         String enter = enterMessage.get().replace("{player}", ((PlayerEntity) event.entity).getGameProfile().getName());
         ChatUtils.moduleInfo(this, enter);
+        if (autoDisconnect.get()) {
+            mc.player.networkHandler.onDisconnect(new DisconnectS2CPacket(new LiteralText("Visual Range: Someone entered your visual range!")));
+
+        }
     }
 
     @EventHandler
