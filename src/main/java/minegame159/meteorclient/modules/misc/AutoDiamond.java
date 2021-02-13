@@ -203,7 +203,7 @@ public class AutoDiamond extends Module {
     int blocksToScan = 0;
 
     @SuppressWarnings("ResultOfMethodCallIgnored")
-    private void startSearching() throws IOException {
+    private void startSearching() {
         MeteorExecutor.execute(() -> {
             try {
                 if (mc.player == null) {
@@ -276,7 +276,6 @@ public class AutoDiamond extends Module {
         while (unScannedBlocks.size() > 0) {
             if (unScannedBlocks.size() % 100 == 0) {
                 ChatUtils.info("Unscanned Blocks: %d", unScannedBlocks.size());
-
             }
             scanForCluster(unScannedBlocks, blocksFound, unScannedBlocks.get(0), 0);
         }
