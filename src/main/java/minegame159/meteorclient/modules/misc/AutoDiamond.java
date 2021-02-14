@@ -2,6 +2,7 @@ package minegame159.meteorclient.modules.misc;
 
 import baritone.api.BaritoneAPI;
 import baritone.api.pathing.goals.GoalBlock;
+import baritone.command.defaults.BlacklistCommand;
 import meteordevelopment.orbit.EventHandler;
 import minegame159.meteorclient.MeteorClient;
 import minegame159.meteorclient.events.world.TickEvent;
@@ -242,7 +243,7 @@ public class AutoDiamond extends Module {
                 if (!smart.get()) {
                     searchDumb(x, z, blocksFound);
                 } else {
-                    searchMoreOrLessSmart(x, z, blocksFound);
+                    searchMoreSmart(x, z, blocksFound);
                 }
                 writer.write(blocksFound.toString());
                 writer.flush();
@@ -257,6 +258,28 @@ public class AutoDiamond extends Module {
                 toggle(false);
             }
         });
+    }
+
+    private void searchMoreSmart(int x, int z, StringBuilder blocksFound) {
+        int r = radius.get();
+        Area a = new Area(x - 1024, z - 1024, 2048);
+        BlockPos b;
+
+        for (int xPos = x - radius.get(); xPos < x + radius.get(); xPos++) {
+            for (int zPos = z - radius.get(); zPos < z + radius.get(); zPos++) {
+                for (int height = minHeight.get(); height < maxHeight.get(); height++) {
+                    b = new BlockPos(xPos, height, zPos);
+                    if (blocks.get().contains(mc.player.world.getBlockState(b).getBlock())) {
+                        a.add(b);
+                    }
+                }
+            }
+        }
+
+        System.out.println(a.pos.size());
+
+        a.split();
+        blocksFound.append(a.sort());
     }
 
     private void searchMoreOrLessSmart(int x, int z, StringBuilder blocksFound) {
