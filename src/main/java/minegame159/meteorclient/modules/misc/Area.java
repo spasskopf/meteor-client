@@ -1,21 +1,20 @@
 package minegame159.meteorclient.modules.misc;
 
 import minegame159.meteorclient.utils.player.ChatUtils;
-import net.minecraft.util.ChatUtil;
 import net.minecraft.util.math.BlockPos;
 
 import java.util.ArrayList;
 
 public class Area {
-    ArrayList<BlockPos> pos = new ArrayList<BlockPos>();
-    Area a[][];
+    ArrayList<BlockPos> pos = new ArrayList<>();
+    Area[][] a;
 
     int x;
     int z;
     int size;
 
-    int MAX_BLOCKS_PER_AREA = 256;
-    int MIN_SIZE = 16;
+    private static final int MAX_BLOCKS_PER_AREA = 256;
+    private static final int MIN_SIZE = 16;
 
     public Area(int x, int z, int size) {
         this.x = x;
@@ -31,28 +30,28 @@ public class Area {
                 return "";
             }
         } else {
-            String s = "";
-            for (int i = 0; i < a.length; i++) {
+            StringBuilder s = new StringBuilder();
+            for (Area[] areas : a) {
                 for (int j = 0; j < a[0].length; j++) {
-                    s += a[i][j].sort();
+                    s.append(areas[j].sort());
                 }
             }
-            return s;
+            return s.toString();
         }
     }
 
     public String BlockPosToString(ArrayList<BlockPos> b) {
-        String s = "";
+        StringBuilder s = new StringBuilder();
 
-        for (int i = 0; i < b.size(); i++) {
-            s += "[.b goto " + b.get(i).getX() + " " + b.get(i).getY() + " " + b.get(i).getZ() + "]\n";
+        for (BlockPos blockPos : b) {
+            s.append("[.b goto ").append(blockPos.getX()).append(" ").append(blockPos.getY()).append(" ").append(blockPos.getZ()).append("]\n");
         }
 
-        return s;
+        return s.toString();
     }
 
     public ArrayList<BlockPos> areaSort() {
-        ArrayList<BlockPos> sorted = new ArrayList<BlockPos>();
+        ArrayList<BlockPos> sorted = new ArrayList<>();
 
         sorted.add(pos.get(0));
         pos.remove(0);
@@ -96,22 +95,23 @@ public class Area {
                 }
             }
 
-            for (int i = 0; i < a.length; i++) {
+            for (Area[] areas : a) {
                 for (int j = 0; j < a[0].length; j++) {
-                    for (int index = 0; index < pos.size(); index++) {
-                        a[i][j].add(pos.get(index));
+                    for (BlockPos po : pos) {
+                        areas[j].add(po);
                     }
-                    a[i][j].split();
+                    areas[j].split();
                 }
             }
 
-            pos = new ArrayList<BlockPos>();
+            pos = new ArrayList<>();
         }
     }
 
     public void add(BlockPos b) {
         //ChatUtils.info("size: " + pos.size() + ", " + b.toString());
-        if ((b.getX() >= x && b.getX() < x + size) && (b.getZ() >= z && b.getZ() < z + size))
+        if ((b.getX() >= x && b.getX() < x + size) && (b.getZ() >= z && b.getZ() < z + size)) {
             pos.add(b);
+        }
     }
 }
