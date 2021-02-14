@@ -88,7 +88,9 @@ public class Modules extends System<Modules> {
 
     public Module get(String name) {
         for (Module module : modules.values()) {
-            if (module.name.equalsIgnoreCase(name)) return module;
+            if (module.name.equalsIgnoreCase(name)) {
+                return module;
+            }
         }
 
         return null;
@@ -122,7 +124,9 @@ public class Modules extends System<Modules> {
 
         for (Module module : this.modules.values()) {
             int words = Utils.search(module.title, text);
-            if (words > 0) modules.add(new Pair<>(module, words));
+            if (words > 0) {
+                modules.add(new Pair<>(module, words));
+            }
         }
 
         modules.sort(Comparator.comparingInt(value -> -value.getRight()));
@@ -167,7 +171,9 @@ public class Modules extends System<Modules> {
 
     @EventHandler(priority = EventPriority.HIGHEST + 1)
     private void onKey(KeyEvent event) {
-        if (event.action == KeyAction.Repeat) return;
+        if (event.action == KeyAction.Repeat) {
+            return;
+        }
 
         // Check if binding module
         if (event.action == KeyAction.Press && moduleToBind != null) {
@@ -237,7 +243,9 @@ public class Modules extends System<Modules> {
         ListTag modulesTag = new ListTag();
         for (Module module : getAll()) {
             CompoundTag moduleTag = module.toTag();
-            if (moduleTag != null) modulesTag.add(moduleTag);
+            if (moduleTag != null) {
+                modulesTag.add(moduleTag);
+            }
         }
         tag.put("modules", modulesTag);
 
@@ -252,7 +260,9 @@ public class Modules extends System<Modules> {
         for (Tag moduleTagI : modulesTag) {
             CompoundTag moduleTag = (CompoundTag) moduleTagI;
             Module module = get(moduleTag.getString("name"));
-            if (module != null) module.fromTag(moduleTag);
+            if (module != null) {
+                module.fromTag(moduleTag);
+            }
         }
 
         return this;
@@ -423,6 +433,7 @@ public class Modules extends System<Modules> {
         addModule(new AntiPacketKick());
         addModule(new AutoBreed());
         addModule(new AutoBrewer());
+        addModule(new AutoFire());
         addModule(new AutoNametag());
         addModule(new AutoReconnect());
         addModule(new AutoShearer());
