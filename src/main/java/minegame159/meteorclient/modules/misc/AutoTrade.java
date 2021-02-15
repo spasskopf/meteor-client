@@ -225,6 +225,7 @@ public class AutoTrade extends Module {
             state = State.WAITING_FOR_VILLAGER_IN_RANGE;
         }
     }
+
     @EventHandler
     private void onVillagerProfessionUpdate(VillagerUpdateProfessionEvent event) {
       /*
@@ -319,7 +320,8 @@ public class AutoTrade extends Module {
         }
 
         int slot = findSlot(targetProfession.get().getProfession());
-        return BlockUtils.place(workStation, Hand.MAIN_HAND, slot, true, 100);
+        return BlockUtils.place(workStation, Hand.MAIN_HAND, slot, true, 100, true);
+        //return BlockUtils.place(workStation, Hand.MAIN_HAND, slot, true, 100, false, true, true);
     }
 
     private void setBlockPos(int x, int y, int z) {
