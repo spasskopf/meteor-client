@@ -10,6 +10,7 @@ import minegame159.meteorclient.settings.Setting;
 import minegame159.meteorclient.settings.SettingGroup;
 import minegame159.meteorclient.utils.player.ChatUtils;
 import minegame159.meteorclient.utils.player.InvUtils;
+import minegame159.meteorclient.utils.player.PlayerUtils;
 import minegame159.meteorclient.utils.player.RotationUtils;
 import minegame159.meteorclient.utils.world.BlockIterator;
 import net.minecraft.block.Blocks;
@@ -30,8 +31,6 @@ public class AutoFire extends Module {
     public AutoFire() {
         super(Category.Misc, "auto-fire", "Automatically extinguishes fire around you");
     }
-
-    //TODO: Onground, Center, Rotation (?), freecam crash bei OnDamage, Dimension testen
 
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
 
@@ -64,6 +63,18 @@ public class AutoFire extends Module {
             .defaultValue(false)
             .build()
     );
+    private final Setting<Boolean> center = sgGeneral.add(new BoolSetting.Builder()
+            .name("center")
+            .description("Automatically centers you when placing water.")
+            .defaultValue(false)
+            .build()
+    );
+    private final Setting<Boolean> onGround = sgGeneral.add(new BoolSetting.Builder()
+            .name("on-ground")
+            .description("Only place when you are on ground.")
+            .defaultValue(false)
+            .build()
+    );
 
 
     private boolean hasPlacedWater = false;
@@ -83,9 +94,12 @@ public class AutoFire extends Module {
             if (!doesWaterBucketWork) {
                 ChatUtils.warning("Enabled Water Buckets!");
                 doesWaterBucketWork = true;
-
             }
         }
+        if (onGround.get() && !mc.player.isOnGround()) {
+            return;
+        }
+
         if (waterBucket.get() && doesWaterBucketWork) {
             if (hasPlacedWater) {
                 final int slot = findSlot(Items.BUCKET);
@@ -99,7 +113,9 @@ public class AutoFire extends Module {
                 if (mc.world.getBlockState(blockPos).getBlock() == Blocks.FIRE) {
                     float yaw = mc.gameRenderer.getCamera().getYaw() % 360;
                     float pitch = mc.gameRenderer.getCamera().getPitch() % 360;
-
+                    if (center.get()) {
+                        PlayerUtils.centerPlayer();
+                    }
                     RotationUtils.packetRotate(90, 90);
                     mc.getNetworkHandler().sendPacket(new PlayerActionC2SPacket(PlayerActionC2SPacket.Action.START_DESTROY_BLOCK, blockPos, Direction.UP));
                     mc.player.swingHand(Hand.MAIN_HAND);
@@ -124,7 +140,9 @@ public class AutoFire extends Module {
     private void place(int slot) {
         if (slot != -1) {
             final int preSlot = mc.player.inventory.selectedSlot;
-            ChatUtils.info("PreSlot %s", preSlot);
+            if (center.get()) {
+                PlayerUtils.centerPlayer();
+            }
             InvUtils.swap(slot);
             float yaw = mc.gameRenderer.getCamera().getYaw() % 360;
             float pitch = mc.gameRenderer.getCamera().getPitch() % 360;
