@@ -31,7 +31,7 @@ public class AutoFire extends Module {
         super(Category.Misc, "auto-fire", "Automatically extinguishes fire around you");
     }
 
-    //TODO: CHECK FOR NETHER!
+    //TODO: Onground, Center, Rotation (?), freecam crash bei OnDamage
 
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
 
@@ -65,14 +65,28 @@ public class AutoFire extends Module {
             .build()
     );
 
+
     private boolean hasPlacedWater = false;
     private BlockPos blockPos = null;
+    private boolean doesWaterBucketWork = true;
 
 
     @EventHandler
     private void onTick(TickEvent.Pre event) {
+        if (mc.world.getDimension().isRespawnAnchorWorking()) {
+            if (doesWaterBucketWork) {
+                ChatUtils.warning("Water Buckets don't work in this dimension!");
+                doesWaterBucketWork = false;
 
-        if (waterBucket.get()) {
+            }
+        } else {
+            if (!doesWaterBucketWork) {
+                ChatUtils.warning("Enabled Water Buckets!");
+                doesWaterBucketWork = true;
+
+            }
+        }
+        if (waterBucket.get() && doesWaterBucketWork) {
             if (hasPlacedWater) {
                 final int slot = findSlot(Items.BUCKET);
                 blockPos = mc.player.getBlockPos();
