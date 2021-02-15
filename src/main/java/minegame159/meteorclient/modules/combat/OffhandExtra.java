@@ -120,8 +120,10 @@ public class OffhandExtra extends Module {
 
     @Override
     public void onDeactivate() {
-        if (mc.world == null || mc.player == null) return;
-        if (Modules.get().get(AutoTotem.class).isActive() && mc.player.getOffHandStack().getItem() != Items.TOTEM_OF_UNDYING) {
+        if (mc.world == null || mc.player == null) {
+            return;
+        }
+        if (Modules.get().isActive(AutoTotem.class) && mc.player.getOffHandStack().getItem() != Items.TOTEM_OF_UNDYING) {
             InvUtils.FindItemResult result = InvUtils.findItemWithCount(Items.TOTEM_OF_UNDYING);
             if (result.slot != -1) {
                 doMove(result.slot);

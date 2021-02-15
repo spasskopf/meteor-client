@@ -123,7 +123,14 @@ public class Criticals extends Module {
 
     private boolean skipCrit() {
         boolean a = !mc.player.isSubmergedInWater() && !mc.player.isInLava() && !mc.player.isClimbing();
-        if (!mc.player.isOnGround()) return true;
+        if (!mc.player.isOnGround()) {
+            return true;
+        }
         return !a;
+    }
+
+    @Override
+    public String getInfoString() {
+        return mode.get().name();
     }
 }

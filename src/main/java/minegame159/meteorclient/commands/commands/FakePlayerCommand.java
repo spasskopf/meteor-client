@@ -39,10 +39,11 @@ public class FakePlayerCommand extends Command {
     }
 
     private boolean active() {
-        if (!Modules.get().get(FakePlayer.class).isActive()) {
-            ChatUtils.moduleError(Modules.get().get(FakePlayer.class),"The FakePlayer module must be enabled to use this command.");
+        if (!Modules.get().isActive(FakePlayer.class)) {
+            ChatUtils.moduleError(Modules.get().get(FakePlayer.class), "The FakePlayer module must be enabled to use this command.");
             return false;
+        } else {
+            return true;
         }
-        else return true;
     }
 }

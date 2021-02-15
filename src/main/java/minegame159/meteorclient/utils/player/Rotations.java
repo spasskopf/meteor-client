@@ -1,3 +1,8 @@
+/*
+ * This file is part of the Meteor Client distribution (https://github.com/MeteorDevelopment/meteor-client/).
+ * Copyright (c) 2021 Meteor Development.
+ */
+
 package minegame159.meteorclient.utils.player;
 
 import meteordevelopment.orbit.EventHandler;
@@ -130,6 +135,7 @@ public class Rotations {
 
         return mc.player.pitch + MathHelper.wrapDegrees((float) -Math.toDegrees(Math.atan2(diffY, diffXZ)) - mc.player.pitch);
     }
+
     public static double getPitch(Entity entity) { return getPitch(entity, Target.Body); }
 
     public static double getYaw(BlockPos pos) {

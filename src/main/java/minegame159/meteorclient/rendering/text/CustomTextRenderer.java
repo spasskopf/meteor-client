@@ -1,3 +1,8 @@
+/*
+ * This file is part of the Meteor Client distribution (https://github.com/MeteorDevelopment/meteor-client/).
+ * Copyright (c) 2021 Meteor Development.
+ */
+
 package minegame159.meteorclient.rendering.text;
 
 import minegame159.meteorclient.rendering.DrawMode;
@@ -44,8 +49,7 @@ public class CustomTextRenderer implements TextRenderer {
 
         if (big) {
             this.font = fonts[fonts.length - 1];
-        }
-        else {
+        } else {
             double scaleA = Math.floor(scale * 10) / 10;
 
             int scaleI;
@@ -86,8 +90,7 @@ public class CustomTextRenderer implements TextRenderer {
         if (shadow) {
             r = font.render(mb, text, x + 1, y + 1, SHADOW_COLOR, scale);
             font.render(mb,text, x, y, color, scale);
-        }
-        else r = font.render(mb, text, x, y, color, scale);
+        } else r = font.render(mb, text, x, y, color, scale);
 
         if (!wasBuilding) end();
         return r;

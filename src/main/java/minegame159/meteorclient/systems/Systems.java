@@ -1,3 +1,8 @@
+/*
+ * This file is part of the Meteor Client distribution (https://github.com/MeteorDevelopment/meteor-client/).
+ * Copyright (c) 2021 Meteor Development.
+ */
+
 package minegame159.meteorclient.systems;
 
 import minegame159.meteorclient.Config;
@@ -56,6 +61,7 @@ public class Systems {
 
         MeteorClient.LOG.info("Saved in {} milliseconds", java.lang.System.currentTimeMillis() - start);
     }
+
     public static void save() {
         save(null);
     }
@@ -76,9 +82,11 @@ public class Systems {
 
         MeteorClient.LOG.info("Loaded in {} milliseconds", java.lang.System.currentTimeMillis() - start);
     }
+
     public static void load(File folder) {
         load(false, folder);
     }
+
     public static void load() {
         load(null);
     }

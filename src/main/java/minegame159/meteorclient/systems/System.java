@@ -1,3 +1,8 @@
+/*
+ * This file is part of the Meteor Client distribution (https://github.com/MeteorDevelopment/meteor-client/).
+ * Copyright (c) 2021 Meteor Development.
+ */
+
 package minegame159.meteorclient.systems;
 
 import minegame159.meteorclient.MeteorClient;
@@ -40,6 +45,7 @@ public abstract class System<T> implements ISerializable<T> {
             e.printStackTrace();
         }
     }
+
     public void save() {
         save(null);
     }
@@ -58,6 +64,7 @@ public abstract class System<T> implements ISerializable<T> {
             e.printStackTrace();
         }
     }
+
     public void load() {
         load(null);
     }

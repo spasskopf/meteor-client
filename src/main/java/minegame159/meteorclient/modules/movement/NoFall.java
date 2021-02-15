@@ -7,6 +7,7 @@ package minegame159.meteorclient.modules.movement;
 
 import meteordevelopment.orbit.EventHandler;
 import minegame159.meteorclient.events.packets.PacketEvent;
+import minegame159.meteorclient.mixin.PlayerMoveC2SPacketAccessor;
 import minegame159.meteorclient.mixininterface.IPlayerMoveC2SPacket;
 import minegame159.meteorclient.modules.Category;
 import minegame159.meteorclient.modules.Module;
@@ -75,14 +76,14 @@ public class NoFall extends Module {
                 for (int i = 0; i <= Math.ceil(height.get()); i++) {
                     if (!mc.world.getBlockState(mc.player.getBlockPos().add(0, -i, 0)).getMaterial().isReplaceable()) {
                         if (mc.player.getBlockPos().add(0, -i, 0).getY() + 1 + height.get() >= mc.player.getPos().getY()) {
-                            ((IPlayerMoveC2SPacket) event.packet).setOnGround(true);
+                            ((PlayerMoveC2SPacketAccessor) event.packet).setOnGround(true);
                             return;
                         }
                     }
                 }
             } else if (mode.get() == Mode.Packet){
                 if(((IPlayerMoveC2SPacket) event.packet).getTag() != 1337) {
-                    ((IPlayerMoveC2SPacket) event.packet).setOnGround(true);
+                    ((PlayerMoveC2SPacketAccessor) event.packet).setOnGround(true);
                 }
             } else if ((placeMode.get() == PlaceMode.BeforeDamage && mc.player.fallDistance > 2)
                     || (placeMode.get() == PlaceMode.BeforeDeath && ((mc.player.getHealth() + mc.player.getAbsorptionAmount()) < mc.player.fallDistance))){
@@ -94,7 +95,7 @@ public class NoFall extends Module {
                         break;
                     }
                 }
-                if (slot != -1){
+                if (slot != -1) {
                     preSlot = mc.player.inventory.selectedSlot;
                     mc.player.inventory.selectedSlot = slot;
                     mc.interactionManager.interactBlock(mc.player, mc.world, Hand.MAIN_HAND, new BlockHitResult(mc.player.getPos().add(0, -1, 0), Direction.UP, mc.player.getBlockPos().down(), false));
@@ -102,5 +103,10 @@ public class NoFall extends Module {
                 }
             }
         }
+    }
+
+    @Override
+    public String getInfoString() {
+        return mode.get().name();
     }
 }

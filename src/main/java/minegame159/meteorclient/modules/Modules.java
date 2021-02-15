@@ -326,7 +326,6 @@ public class Modules extends System<Modules> {
         addModule(new AntiHunger());
         addModule(new AutoClicker());
         addModule(new AutoDrop());
-        addModule(new AutoEat());
         addModule(new AutoFish());
         addModule(new AutoMend());
         addModule(new AutoMount());
@@ -340,6 +339,7 @@ public class Modules extends System<Modules> {
         addModule(new EndermanLook());
         addModule(new FakePlayer());
         addModule(new FastUse());
+        addModule(new GhostHand());
         addModule(new InfinityMiner());
         addModule(new LiquidInteract());
         addModule(new MiddleClickExtra());
@@ -358,6 +358,7 @@ public class Modules extends System<Modules> {
         addModule(new Trail());
         addModule(new XCarry());
         addModule(new AutoGap());
+        addModule(new AutoEat());
     }
 
     private void initMovement() {

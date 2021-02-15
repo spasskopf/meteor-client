@@ -31,7 +31,7 @@ public class AutoFire extends Module {
         super(Category.Misc, "auto-fire", "Automatically extinguishes fire around you");
     }
 
-    //TODO: Onground, Center, Rotation (?), freecam crash bei OnDamage
+    //TODO: Onground, Center, Rotation (?), freecam crash bei OnDamage, Dimension testen
 
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
 

@@ -103,7 +103,7 @@ public class AutoTotem extends Module {
         InvUtils.FindItemResult result = InvUtils.findItemWithCount(Items.TOTEM_OF_UNDYING);
 
         if (result.count <= 0) {
-            if (!Modules.get().get(OffhandExtra.class).isActive() && fallback.get()) {
+            if (!Modules.get().isActive(OffhandExtra.class) && fallback.get()) {
                 Modules.get().get(OffhandExtra.class).toggle();
             }
 
@@ -147,19 +147,19 @@ public class AutoTotem extends Module {
         double damageTaken = 0;
         if (mc.player.abilities.creativeMode) return damageTaken;
         for(Entity entity : mc.world.getEntities()){
-            if(entity instanceof EndCrystalEntity && damageTaken < DamageCalcUtils.crystalDamage(mc.player, entity.getPos())){
+            if (entity instanceof EndCrystalEntity && damageTaken < DamageCalcUtils.crystalDamage(mc.player, entity.getPos())) {
                 damageTaken = DamageCalcUtils.crystalDamage(mc.player, entity.getPos());
-            }else if(entity instanceof PlayerEntity && damageTaken < DamageCalcUtils.getSwordDamage((PlayerEntity) entity, true)){
-                if(Friends.get().notTrusted((PlayerEntity) entity) && mc.player.getPos().distanceTo(entity.getPos()) < 5){
-                    if(((PlayerEntity) entity).getActiveItem().getItem() instanceof SwordItem){
+            } else if (entity instanceof PlayerEntity && damageTaken < DamageCalcUtils.getSwordDamage((PlayerEntity) entity, true)) {
+                if (Friends.get().notTrusted((PlayerEntity) entity) && mc.player.getPos().distanceTo(entity.getPos()) < 5) {
+                    if (((PlayerEntity) entity).getActiveItem().getItem() instanceof SwordItem) {
                         damageTaken = DamageCalcUtils.getSwordDamage((PlayerEntity) entity, true);
                     }
                 }
             }
         }
-        if(!Modules.get().get(NoFall.class).isActive() && mc.player.fallDistance > 3){
-            double damage =mc.player.fallDistance * 0.5;
-            if(damage > damageTaken){
+        if (!Modules.get().isActive(NoFall.class) && mc.player.fallDistance > 3) {
+            double damage = mc.player.fallDistance * 0.5;
+            if (damage > damageTaken) {
                 damageTaken = damage;
             }
         }
