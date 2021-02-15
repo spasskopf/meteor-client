@@ -72,7 +72,6 @@ public class AutoFire extends Module {
     @EventHandler
     private void onTick(TickEvent.Pre event) {
 
-
         if (waterBucket.get()) {
             if (hasPlacedWater) {
                 final int slot = findSlot(Items.BUCKET);
@@ -81,6 +80,7 @@ public class AutoFire extends Module {
                 hasPlacedWater = false;
 
             } else if (!mc.player.hasStatusEffect(FIRE_RESISTANCE) && mc.player.isOnFire()) {
+                blockPos = mc.player.getBlockPos();
                 final int slot = findSlot(Items.WATER_BUCKET);
                 if (mc.world.getBlockState(blockPos).getBlock() == Blocks.FIRE) {
                     float yaw = mc.gameRenderer.getCamera().getYaw() % 360;
@@ -94,6 +94,7 @@ public class AutoFire extends Module {
                     RotationUtils.packetRotate(yaw, pitch);
                 }
                 place(slot);
+                hasPlacedWater = true;
             }
         }
 
