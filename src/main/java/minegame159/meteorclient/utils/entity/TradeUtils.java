@@ -152,12 +152,11 @@ public class TradeUtils {
 
 
     public static List<ItemStack> getLibrarian() {
-        List<Enchantment> list = (List) Registry.ENCHANTMENT.stream().filter(Enchantment::isAvailableForEnchantedBookOffer).collect(Collectors.toList());
-        List<ItemStack> trades = new ArrayList<>();
+        final List<Enchantment> list = (List) Registry.ENCHANTMENT.stream().filter(Enchantment::isAvailableForEnchantedBookOffer).collect(Collectors.toList());
+        final List<ItemStack> trades = new ArrayList<>();
         for (Enchantment enchantment : list) {
-            for (int i : MathUtils.mathHelperNextInt(enchantment.getMinLevel(),enchantment.getMaxLevel())) {
-                ItemStack itemStack = EnchantedBookItem.forEnchantment(new EnchantmentLevelEntry(enchantment, i));
-                System.out.println("new EnchantmentLevelEntry(enchantment,i).enchantment.getName(i).asString() = " + enchantment.getName(1) + " | " + new EnchantmentLevelEntry(enchantment, i).enchantment.getName(i).getString());
+            for (int i : MathUtils.mathHelperNextInt(enchantment.getMinLevel(), enchantment.getMaxLevel())) {
+                final ItemStack itemStack = EnchantedBookItem.forEnchantment(new EnchantmentLevelEntry(enchantment, i));
                 trades.add(itemStack);
             }
         }
@@ -169,7 +168,7 @@ public class TradeUtils {
     }
 
     private static ItemStack[] asItemStackArray(ItemConvertible... items) {
-        ItemStack[] r = new ItemStack[items.length];
+       final ItemStack[] r = new ItemStack[items.length];
         for (int i = 0; i < items.length; i++) {
             r[i] = asItemStack(items[i]);
         }
