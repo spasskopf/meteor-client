@@ -49,14 +49,14 @@ public class Tracers extends Module {
 
     // Appearance
 
-    private final Setting<Target> target = sgAppearance.add(new EnumSetting.Builder<Target>()
+    public final Setting<Target> target = sgAppearance.add(new EnumSetting.Builder<Target>()
             .name("target")
             .description("What part of the entity to target.")
             .defaultValue(Target.Body)
             .build()
     );
 
-    private final Setting<Boolean> stem = sgAppearance.add(new BoolSetting.Builder()
+    public final Setting<Boolean> stem = sgAppearance.add(new BoolSetting.Builder()
             .name("stem")
             .description("Draw a line through the center of the tracer target.")
             .defaultValue(true)

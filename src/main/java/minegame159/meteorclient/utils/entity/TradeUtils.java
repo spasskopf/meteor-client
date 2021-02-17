@@ -1,5 +1,6 @@
 package minegame159.meteorclient.utils.entity;
 
+import minegame159.meteorclient.modules.misc.AutoTrade;
 import minegame159.meteorclient.utils.misc.MathUtils;
 import net.minecraft.block.Blocks;
 import net.minecraft.enchantment.Enchantment;
@@ -10,15 +11,15 @@ import net.minecraft.village.VillagerProfession;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class TradeUtils {
     public static final List<ItemStack> TRADES;
+    public static final List<String> TRADES_AS_STRING;
 
     static {
-        TRADES = new LinkedList<>();
+        TRADES = new ArrayList<>();
         TRADES.add(asItemStack(Items.EMERALD));
 
         TRADES.addAll(getLibrarian());
@@ -34,6 +35,12 @@ public class TradeUtils {
         TRADES.addAll(getShepherd());
         TRADES.addAll(getToolsmith());
         TRADES.addAll(getWeaponsmith());
+
+        TRADES_AS_STRING = new ArrayList<>();
+        for (ItemStack trade : TRADES) {
+            TRADES_AS_STRING.add(toString(trade));
+        }
+
     }
 
 
@@ -235,5 +242,20 @@ public class TradeUtils {
                             .substring(1))
                     .replace("_", " ");
         }
+    }
+
+    public static String toString(ItemStack itemStack) {
+        final StringBuilder b = new StringBuilder();
+        final String[] enchantments = AutoTrade.getEnchantments(itemStack);
+        b.append(itemStack.getItem().toString().replace("_"," "));
+        b.append(" ");
+        if (enchantments.length > 0) {
+            for (int i = 0; i < enchantments.length - 1; i++) {
+                b.append(enchantments[i]);
+                b.append(", ");
+            }
+            b.append(enchantments[enchantments.length - 1]);
+        }
+        return b.toString();
     }
 }

@@ -4,29 +4,28 @@ import meteordevelopment.orbit.EventHandler;
 import minegame159.meteorclient.events.entity.EntityDestroyEvent;
 import minegame159.meteorclient.events.entity.VillagerUpdateProfessionEvent;
 import minegame159.meteorclient.events.entity.player.BreakBlockEvent;
+import minegame159.meteorclient.events.render.RenderEvent;
 import minegame159.meteorclient.events.world.TickEvent;
 import minegame159.meteorclient.modules.Category;
 import minegame159.meteorclient.modules.Module;
-import minegame159.meteorclient.settings.DoubleSetting;
-import minegame159.meteorclient.settings.EnumSetting;
-import minegame159.meteorclient.settings.Setting;
-import minegame159.meteorclient.settings.SettingGroup;
+import minegame159.meteorclient.modules.Modules;
+import minegame159.meteorclient.modules.render.Tracers;
+import minegame159.meteorclient.settings.*;
 import minegame159.meteorclient.utils.entity.EntityUtils;
 import minegame159.meteorclient.utils.entity.SortPriority;
 import minegame159.meteorclient.utils.entity.TradeUtils;
 import minegame159.meteorclient.utils.player.ChatUtils;
+import minegame159.meteorclient.utils.render.RenderUtils;
+import minegame159.meteorclient.utils.render.color.SettingColor;
 import minegame159.meteorclient.utils.world.BlockUtils;
 import net.minecraft.block.BlockState;
 import net.minecraft.enchantment.Enchantment;
+import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.passive.VillagerEntity;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvent;
@@ -37,13 +36,17 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.village.TradeOffer;
 import net.minecraft.village.VillagerProfession;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 public class AutoTrade extends Module {
 
     private static final String PREFIX;
 
 
     static {
-        PREFIX = "[AutoTrade]";
+        PREFIX = "AutoTrade";
     }
 
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
@@ -56,6 +59,10 @@ public class AutoTrade extends Module {
     private boolean didStateChange = false;
     private boolean isBreakingWorkStation = false;
 
+    /**
+     * A List of all Villagers, who are known to have the wrong profession
+     */
+    private final List<VillagerEntity> excludedVillagers = new ArrayList<>();
 
     //<editor-fold desc="Settings">
     private final Setting<Double> range = sgGeneral.add(new DoubleSetting.Builder()
@@ -82,6 +89,33 @@ public class AutoTrade extends Module {
             .defaultValue(TradeUtils.Professions.LIBRARIAN)
             .build()
     );
+    private final Setting<Boolean> tracers = sgGeneral.add(new BoolSetting.Builder()
+            .name("tracers")
+            .description("Draws lines to targeted villager and their workstation.")
+            .defaultValue(false)
+            .build()
+    );
+
+    private final Setting<SettingColor> tracersColor = sgGeneral.add(new ColorSetting.Builder()
+            .name("tracers-color")
+            .description("The color of the tracers.")
+            .defaultValue(new SettingColor(225, 225, 225))
+            .build()
+    );
+
+    private final Setting<Boolean> continueWorking = sgGeneral.add(new BoolSetting.Builder()
+            .name("continue")
+            .description("Continues even if an exception occurred (might spam your chat / log with exception messages...)")
+            .defaultValue(false)
+            .build()
+    );
+
+    private final Setting<List<String>> trades = sgGeneral.add(new TradeListSetting.Builder()
+            .name("trades")
+            .description("Trades you want to get")
+            //.defaultValue(TradeUtils.TRADES_AS_STRING)
+            .build()
+    );
     //</editor-fold>
 
 
@@ -96,6 +130,7 @@ public class AutoTrade extends Module {
         state = State.WAITING_FOR_VILLAGER_IN_RANGE;
         villager = null;
         workStation = null;
+        excludedVillagers.clear();
     }
 
     @Override
@@ -103,87 +138,13 @@ public class AutoTrade extends Module {
         state = State.WAITING_FOR_VILLAGER_IN_RANGE;
         villager = null;
         workStation = null;
+        excludedVillagers.clear();
     }
     //</editor-fold>
 
-    @EventHandler
-    private void onTick(TickEvent.Post event) {
-        if (!isActive()) {
-            return;
-        }
-
-        if (state == State.WAITING_FOR_VILLAGER_IN_RANGE || villager == null) {
-            scanForVillagerInRange();
-        } else if (state == State.WAITING_FOR_JOB) {
-            scanForJob();
-        } else if (state == State.CHECKING_TRADE) {
-            if (checkTrade()) {
-                state = State.FINISHED;
-                toggle();
-                ChatUtils.prefixInfo(PREFIX, "Got correct trade! Disabling!");
-                mc.player.playSound(new SoundEvent(new Identifier("minecraft:block.bell.use")), SoundCategory.PLAYERS, 2, 1);
-            } else {
-                try {
-                    if (!isBreakingWorkStation) {
-                        ChatUtils.info("Removing Workstation!");
-                        isBreakingWorkStation = true;
-                        removeWorkStation();
-                    }
-                } catch (Exception e) {
-                    ChatUtils.info("Exception while trying to break block!");
-                    e.printStackTrace();
-                }
-            }
-        }
-
-    }
 
     private void removeWorkStation() {
         mine(workStation.toImmutable());
-    }
-
-    /**
-     * @return true if the villager's trade is the right trade
-     */
-    private boolean checkTrade() {
-        for (TradeOffer offer : villager.getOffers()) {
-            if (offer.getMutableSellItem().getItem() == Items.ENCHANTED_BOOK) {
-                ChatUtils.info("villager sells book!" + offer.getMutableSellItem().getItem().toString());
-                for (String enchantment : getEnchantments(offer.getMutableSellItem())) {
-                    ChatUtils.info("Enchantment: %s", enchantment);
-                }
-                return true;
-            }
-        }
-        return false;
-
-    }
-
-    private void scanForJob() {
-        if (villager.getVillagerData().getProfession() == VillagerProfession.NONE) {
-            if (workStation != null) {
-                if (!workStation.isWithinDistance(mc.player.getPos(), workstationRange.get())) {
-                    ChatUtils.warning("Old workstation is not in range! Placing a new one. (Location: %s)", workStation.toShortString());
-                    workStation = new BlockPos.Mutable(mc.player.getX(), mc.player.getY(), mc.player.getZ());
-                } else {
-                    return;
-                }
-            } else {
-                workStation = new BlockPos.Mutable(mc.player.getX(), mc.player.getY(), mc.player.getZ());
-            }
-
-
-            final Direction direction = getDirection();
-            if (place(direction.getX(), 0, direction.getZ())) {
-                ChatUtils.info("Placed Workstation!");
-            } else {
-                ChatUtils.error("Could not find / place Workstation");
-                this.toggle(false);
-            }
-        } else if (villager.getVillagerData().getProfession() == targetProfession.get().getProfession()) {
-            state = State.CHECKING_TRADE;
-            ChatUtils.info("Found villager with correct profession!");
-        }
     }
 
     private void scanForVillagerInRange() {
@@ -208,7 +169,8 @@ public class AutoTrade extends Module {
                 return false;
             }
 
-            return entity instanceof VillagerEntity;
+
+            return entity instanceof VillagerEntity && !((VillagerEntity) entity).isBaby() && !excludedVillagers.contains(entity);
         }, SortPriority.LowestDistance);
         if (villager != null) {
             state = State.WAITING_FOR_JOB;
@@ -216,13 +178,119 @@ public class AutoTrade extends Module {
         }
     }
 
+    /**
+     * @return true if the villager's trade is the right trade
+     */
+    private boolean checkTrade() {
+         for (TradeOffer offer : villager.getOffers()) {
+            if (trades.get().contains(TradeUtils.toString(offer.getMutableSellItem()))) {
+                return true;
+            }
+
+        }
+        return false;
+
+    }
+
+    private void scanForJob() {
+        if (villager.getVillagerData().getProfession() == VillagerProfession.NONE) {
+            if (workStation != null) {
+                if (!workStation.isWithinDistance(mc.player.getPos(), workstationRange.get())) {
+                    ChatUtils.warning("Old workstation is not in range! Placing a new one. (Location: %s)", workStation.toShortString());
+                    workStation = new BlockPos.Mutable(mc.player.getX(), mc.player.getY(), mc.player.getZ());
+                } else {
+                    return;
+                }
+            } else {
+                workStation = new BlockPos.Mutable(mc.player.getX(), mc.player.getY(), mc.player.getZ());
+            }
+
+
+            final Direction direction = getDirection();
+            if (place(direction.getX(), 0, direction.getZ())) {
+                ChatUtils.info("Placed Workstation!");
+            } else {
+                ChatUtils.error("Could not find / place Workstation");
+                toggleIfNotContinueWorking();
+            }
+        } else if (villager.getVillagerData().getProfession() == targetProfession.get().getProfession()) {
+            state = State.CHECKING_TRADE;
+            ChatUtils.info("Found villager with correct profession!");
+        } else {
+            excludedVillagers.add(villager);
+            state = State.WAITING_FOR_VILLAGER_IN_RANGE;
+        }
+
+    }
+
 
     //<editor-fold desc="Event Handler">
     @EventHandler
+    public void onRender(RenderEvent event) {
+        if (tracers.get()) {
+            if (villager != null) {
+                RenderUtils.drawTracerToEntity(event,
+                        villager,
+                        tracersColor.get(),
+                        Modules.get().get(Tracers.class).target.get(),
+                        Modules.get().get(Tracers.class).stem.get());
+
+            }
+            if (workStation != null) {
+                RenderUtils.drawTracerToPos(workStation,
+                        tracersColor.get(),
+                        event);
+            }
+        }
+
+    }
+
+    @EventHandler
+    private void onTick(TickEvent.Post event) {
+        if (!isActive()) {
+            return;
+        }
+
+        if (state == State.WAITING_FOR_VILLAGER_IN_RANGE || villager == null) {
+            scanForVillagerInRange();
+        } else if (state == State.WAITING_FOR_JOB) {
+            scanForJob();
+        } else if (state == State.CHECKING_TRADE) {
+            if (checkTrade()) {
+                state = State.FINISHED;
+                toggle();
+                ChatUtils.prefixInfo(PREFIX, "Got correct trade! Disabling!");
+                mc.player.playSound(new SoundEvent(new Identifier("minecraft:block.bell.use")), SoundCategory.PLAYERS, 2, 1);
+            } else {
+                try {
+                    if (!isBreakingWorkStation) {
+                        ChatUtils.info("Removing Workstation!");
+                        isBreakingWorkStation = true;
+                        removeWorkStation();
+                    } else {
+                        ChatUtils.info("is breaking workstation!");
+                    }
+                } catch (Exception e) {
+                    ChatUtils.info("Exception while trying to break block!");
+                    state = State.WAITING_FOR_VILLAGER_IN_RANGE;
+                    isBreakingWorkStation = false;
+                    e.printStackTrace();
+                }
+            }
+        }
+
+    }
+
+    @EventHandler
     public void onEntityDeath(EntityDestroyEvent event) {
-        if (event.entity.equals(villager)) {
-            villager = null;
-            state = State.WAITING_FOR_VILLAGER_IN_RANGE;
+        if (event.entity instanceof VillagerEntity) {
+            if (event.entity.equals(villager)) {
+                villager = null;
+                state = State.WAITING_FOR_VILLAGER_IN_RANGE;
+                ChatUtils.prefixInfo(PREFIX, "The villager just died");
+            }
+            //IntelliJ: Why is casting useless here, but without casting it's a "Suspicious call to 'List.remove'"?
+            excludedVillagers.remove((VillagerEntity) event.entity);
         }
     }
 
@@ -236,8 +304,11 @@ public class AutoTrade extends Module {
         if (event.action == VillagerUpdateProfessionEvent.Action.LOST_JOB) {
             if (event.entity.equals(villager)) {
                 state = State.WAITING_FOR_JOB;
+                workStation = null;
             }
+            excludedVillagers.remove(event.entity);
         }
+
     }
 
     @EventHandler
@@ -251,11 +322,18 @@ public class AutoTrade extends Module {
     }
     //</editor-fold>
 
+    private void toggleIfNotContinueWorking() {
+        if (continueWorking.get()) {
+            ChatUtils.prefixInfo(PREFIX, "Continued because continue working is on! Might cause issues!");
+        } else {
+            toggle();
+        }
+    }
+
     @Override
     public String getInfoString() {
         return state.toString();
     }
-
 
     public enum State {
         WAITING_FOR_VILLAGER_IN_RANGE,
@@ -272,43 +350,33 @@ public class AutoTrade extends Module {
                             .substring(1))
                     .replace("_", " ");
         }
+
     }
 
-    //<editor-fold desc="Stuff. was  private in other classes...">
+
     public static String[] getEnchantments(ItemStack itemStack) {
-        CompoundTag tag = itemStack.getOrCreateTag();
-        ListTag listTag;
 
-        // Get list tag
-        if (!tag.contains("Enchantments", 9)) {
-            listTag = new ListTag();
-            tag.put("Enchantments", listTag);
-        } else {
-            listTag = tag.getList("Enchantments", 10);
-        }
-        String[] enchantments = new String[listTag.size()];
-        for (int i = 0; i < listTag.size(); i++) {
-            Tag _t = listTag.get(i);
-            CompoundTag t = (CompoundTag) _t;
+        final Map<Enchantment, Integer> enchantments = EnchantmentHelper.get(itemStack);
+        final String[] enchs = new String[enchantments.size()];
+        final int[] n = {0};
+        enchantments.forEach((enchantment, integer) -> {
+            enchs[n[0]] = enchantment.getName(integer).getString();
+            n[0]++;
+        });
+        return enchs;
+        /*
+           ListTag listTag = itemStack.getEnchantments();
 
-
-            try {
-                enchantments[i] =
-                        Enchantment.byRawId(Integer.parseInt(t.getString("id")))
-                                + " "
-                                + t.getString("lvl");
-            } catch (NumberFormatException e) {
-                enchantments[i] =
-                        t.getString("id")
-                                + " "
-                                + t.getString("lvl");
-            }
-
-
-        }
-        return enchantments;
-
+           ChatUtils.info("Zero Compund Size: %d", listTag.getCompound(0).getSize());
+           for (int i = 0; i < listTag.size(); ++i) {
+               enchs[i] = String.format("Enchantment %s, %d",
+                       listTag.getCompound(i).getString("id"),
+                       listTag.getCompound(i).getInt("lvl"));
+           }
+           return enchs;
+         */
     }
+    //<editor-fold desc="Stuff. was  private in other classes...">
 
 
     private boolean place(int x, int y, int z) {
@@ -352,8 +420,6 @@ public class AutoTrade extends Module {
 
         if (yaw < 0) {
             yaw += 360;
-        }
-        if (pitch < 0) {
         }
 
         if (yaw >= 337.5 || yaw < 22.5) {

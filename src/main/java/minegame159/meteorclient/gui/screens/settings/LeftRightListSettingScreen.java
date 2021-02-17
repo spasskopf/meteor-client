@@ -10,7 +10,6 @@ import minegame159.meteorclient.gui.widgets.*;
 import minegame159.meteorclient.settings.Setting;
 import minegame159.meteorclient.utils.Utils;
 import net.minecraft.util.Pair;
-import net.minecraft.util.registry.Registry;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -23,7 +22,7 @@ public abstract class LeftRightListSettingScreen<T> extends WindowScreen {
 
     private String filterText = "";
 
-    public LeftRightListSettingScreen(String title, Setting<List<T>> setting, Registry<T> registry) {
+    public LeftRightListSettingScreen(String title, Setting<List<T>> setting, Iterable<T> registry) {
         super(title, true);
 
         this.setting = setting;
@@ -41,7 +40,7 @@ public abstract class LeftRightListSettingScreen<T> extends WindowScreen {
         initWidgets(registry);
     }
 
-    private void initWidgets(Registry<T> registry) {
+    private void initWidgets(Iterable<T> registry) {
         // Filter
         add(filter).fillX().expandX();
         row();
@@ -77,7 +76,7 @@ public abstract class LeftRightListSettingScreen<T> extends WindowScreen {
         });
     }
 
-    private void addValue(Registry<T> registry, T value) {
+    private void addValue(Iterable<T> registry, T value) {
         if (!setting.get().contains(value)) {
             setting.get().add(value);
 
@@ -87,7 +86,7 @@ public abstract class LeftRightListSettingScreen<T> extends WindowScreen {
         }
     }
 
-    private void removeValue(Registry<T> registry, T value) {
+    private void removeValue(Iterable<T> registry, T value) {
         if (setting.get().remove(value)) {
             setting.changed();
             clear();
