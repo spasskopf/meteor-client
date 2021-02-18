@@ -2,7 +2,6 @@ package minegame159.meteorclient.utils.entity;
 
 import minegame159.meteorclient.modules.misc.AutoTrade;
 import minegame159.meteorclient.utils.misc.MathUtils;
-import net.minecraft.block.Blocks;
 import net.minecraft.enchantment.Enchantment;
 import net.minecraft.enchantment.EnchantmentLevelEntry;
 import net.minecraft.item.*;
@@ -106,11 +105,7 @@ public class TradeUtils {
     }
 
     public static List<ItemStack> getShepherd() {
-        return asList(asItemStackArray(
-                Blocks.WHITE_WOOL,
-                Blocks.BROWN_WOOL,
-                Blocks.BLACK_WOOL,
-                Blocks.GRAY_WOOL));
+        return asList(asItemStack(Items.SHEARS));
     }
 
     public static List<ItemStack> getToolsmith() {

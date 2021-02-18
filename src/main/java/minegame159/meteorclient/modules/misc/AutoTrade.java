@@ -4,6 +4,7 @@ import meteordevelopment.orbit.EventHandler;
 import minegame159.meteorclient.events.entity.EntityDestroyEvent;
 import minegame159.meteorclient.events.entity.VillagerUpdateProfessionEvent;
 import minegame159.meteorclient.events.entity.player.BreakBlockEvent;
+import minegame159.meteorclient.events.game.OpenVillagerGuiScreenEvent;
 import minegame159.meteorclient.events.render.RenderEvent;
 import minegame159.meteorclient.events.world.TickEvent;
 import minegame159.meteorclient.modules.Category;
@@ -15,13 +16,16 @@ import minegame159.meteorclient.utils.entity.EntityUtils;
 import minegame159.meteorclient.utils.entity.SortPriority;
 import minegame159.meteorclient.utils.entity.TradeUtils;
 import minegame159.meteorclient.utils.player.ChatUtils;
+import minegame159.meteorclient.utils.player.InvUtils;
+import minegame159.meteorclient.utils.player.Rotations;
 import minegame159.meteorclient.utils.render.RenderUtils;
 import minegame159.meteorclient.utils.render.color.SettingColor;
 import minegame159.meteorclient.utils.world.BlockUtils;
 import net.minecraft.block.BlockState;
 import net.minecraft.enchantment.Enchantment;
 import net.minecraft.enchantment.EnchantmentHelper;
-import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityType;
 import net.minecraft.entity.passive.VillagerEntity;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.Item;
@@ -29,11 +33,11 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvent;
-import net.minecraft.text.Text;
 import net.minecraft.util.Hand;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.village.TradeOffer;
+import net.minecraft.village.TradeOfferList;
 import net.minecraft.village.VillagerProfession;
 
 import java.util.ArrayList;
@@ -42,29 +46,11 @@ import java.util.Map;
 
 public class AutoTrade extends Module {
 
-    private static final String PREFIX;
-
-
-    static {
-        PREFIX = "AutoTrade";
-    }
-
-    private final SettingGroup sgGeneral = settings.getDefaultGroup();
-
-
-    private VillagerEntity villager;
-    private State state = State.WAITING_FOR_VILLAGER_IN_RANGE;
-    private BlockPos.Mutable workStation = null;
-
-    private boolean didStateChange = false;
-    private boolean isBreakingWorkStation = false;
-
-    /**
-     * A List of all Villagers, who are known to have the wrong profession
-     */
-    private final List<VillagerEntity> excludedVillagers = new ArrayList<>();
+    private static final String PREFIX = "AutoTrade";
 
     //<editor-fold desc="Settings">
+    private final SettingGroup sgGeneral = settings.getDefaultGroup();
+
     private final Setting<Double> range = sgGeneral.add(new DoubleSetting.Builder()
             .name("range")
             .description("The maximum range the villager can be to interact with it.")
@@ -72,15 +58,6 @@ public class AutoTrade extends Module {
             .min(0)
             .max(6)
             .sliderMax(6)
-            .build()
-    );
-    private final Setting<Double> workstationRange = sgGeneral.add(new DoubleSetting.Builder()
-            .name("workstation-range")
-            .description("The maximum range placed workstation can be away before placing a new one.")
-            .defaultValue(3)
-            .min(0)
-            .max(10)
-            .sliderMax(10)
             .build()
     );
     private final Setting<TradeUtils.Professions> targetProfession = sgGeneral.add(new EnumSetting.Builder<TradeUtils.Professions>()
@@ -91,7 +68,13 @@ public class AutoTrade extends Module {
     );
     private final Setting<Boolean> tracers = sgGeneral.add(new BoolSetting.Builder()
             .name("tracers")
-            .description("Draws lines to targeted villager and their workstation.")
+            .description("Draws lines to targeted villagers and their workstation.")
+            .defaultValue(false)
+            .build()
+    );
+    private final Setting<Boolean> blacklistTracers = sgGeneral.add(new BoolSetting.Builder()
+            .name("blacklist-tracers")
+            .description("Draws lines to blacklisted villagers.")
             .defaultValue(false)
             .build()
     );
@@ -100,6 +83,13 @@ public class AutoTrade extends Module {
             .name("tracers-color")
             .description("The color of the tracers.")
             .defaultValue(new SettingColor(225, 225, 225))
+            .build()
+    );
+
+    private final Setting<SettingColor> blackListTracersColor = sgGeneral.add(new ColorSetting.Builder()
+            .name("blacklist-tracers-color")
+            .description("The color of the blacklist tracers.")
+            .defaultValue(new SettingColor(225, 0, 0))
             .build()
     );
 
@@ -118,6 +108,16 @@ public class AutoTrade extends Module {
     );
     //</editor-fold>
 
+    private VillagerEntity villager;
+    private State state = State.WAITING_FOR_VILLAGER_IN_RANGE;
+    private BlockPos workStation = null;
+
+
+    /**
+     * A List of all Villagers, who are known to have the wrong profession
+     */
+    private final List<VillagerEntity> blacklistedVillagers = new ArrayList<>();
+
 
     public AutoTrade() {
         super(Category.Misc, "auto-trade", "Automatically trades with Villagers");
@@ -127,102 +127,82 @@ public class AutoTrade extends Module {
     //<editor-fold desc="Activate / Deactivate">
     @Override
     public void onActivate() {
-        state = State.WAITING_FOR_VILLAGER_IN_RANGE;
-        villager = null;
-        workStation = null;
-        excludedVillagers.clear();
+        reset();
     }
 
     @Override
     public void onDeactivate() {
-        state = State.WAITING_FOR_VILLAGER_IN_RANGE;
-        villager = null;
-        workStation = null;
-        excludedVillagers.clear();
+        reset();
     }
     //</editor-fold>
 
 
-    private void removeWorkStation() {
-        mine(workStation.toImmutable());
-    }
-
-    private void scanForVillagerInRange() {
-        if (didStateChange) {
-            ChatUtils.info(PREFIX, Text.of("Checking for villagers in range..."));
-            didStateChange = false;
-        }
-
-        if (mc.player.isDead() || !mc.player.isAlive()) {
-            villager = null;
-            return;
-        }
-
-        villager = (VillagerEntity) EntityUtils.get(entity -> {
-            if (entity == mc.player || entity == mc.cameraEntity) {
-                return false;
-            }
-            if ((entity instanceof LivingEntity && ((LivingEntity) entity).isDead()) || !entity.isAlive()) {
-                return false;
-            }
-            if (entity.distanceTo(mc.player) > range.get()) {
-                return false;
-            }
-
-
-            return entity instanceof VillagerEntity && !((VillagerEntity) entity).isBaby() && !excludedVillagers.contains(entity);
-        }, SortPriority.LowestDistance);
-        if (villager != null) {
-            state = State.WAITING_FOR_JOB;
-            ChatUtils.info("Waiting for job!");
-        }
-    }
-
     /**
      * @return true if the villager's trade is the right trade
      */
-    private boolean checkTrade() {
-         for (TradeOffer offer : villager.getOffers()) {
+    private boolean checkTrade(TradeOfferList offers) {
+        for (TradeOffer offer : offers) {
             if (trades.get().contains(TradeUtils.toString(offer.getMutableSellItem()))) {
+                ChatUtils.prefixInfo(PREFIX, "Correct Trade! %s", TradeUtils.toString(offer.getMutableSellItem()));
                 return true;
+            } else {
+                ChatUtils.prefixInfo(PREFIX, "Wrong Trade! %s", TradeUtils.toString(offer.getMutableSellItem()));
             }
-
         }
         return false;
-
     }
 
-    private void scanForJob() {
-        if (villager.getVillagerData().getProfession() == VillagerProfession.NONE) {
-            if (workStation != null) {
-                if (!workStation.isWithinDistance(mc.player.getPos(), workstationRange.get())) {
-                    ChatUtils.warning("Old workstation is not in range! Placing a new one. (Location: %s)", workStation.toShortString());
-                    workStation = new BlockPos.Mutable(mc.player.getX(), mc.player.getY(), mc.player.getZ());
-                } else {
-                    return;
-                }
-            } else {
-                workStation = new BlockPos.Mutable(mc.player.getX(), mc.player.getY(), mc.player.getZ());
-            }
+
+    private void reset() {
+        villager = null;
+        workStation = null;
+        state = State.WAITING_FOR_VILLAGER_IN_RANGE;
+        blacklistedVillagers.clear();
+    }
 
 
-            final Direction direction = getDirection();
-            if (place(direction.getX(), 0, direction.getZ())) {
-                ChatUtils.info("Placed Workstation!");
-            } else {
-                ChatUtils.error("Could not find / place Workstation");
-                toggleIfNotContinueWorking();
-            }
-        } else if (villager.getVillagerData().getProfession() == targetProfession.get().getProfession()) {
-            state = State.CHECKING_TRADE;
-            ChatUtils.info("Found villager with correct profession!");
-        } else {
-            excludedVillagers.add(villager);
-            state = State.WAITING_FOR_VILLAGER_IN_RANGE;
+    private void mineWorkStation() {
+        state = State.REMOVING_WORKSTATION;
+
+        mc.getNetworkHandler().sendPacket(new PlayerActionC2SPacket(PlayerActionC2SPacket.Action.START_DESTROY_BLOCK, workStation, net.minecraft.util.math.Direction.UP));
+        mc.player.swingHand(Hand.MAIN_HAND);
+        mc.getNetworkHandler().sendPacket(new PlayerActionC2SPacket(PlayerActionC2SPacket.Action.STOP_DESTROY_BLOCK, workStation, net.minecraft.util.math.Direction.UP));
+    }
+
+    private void scanForVillagerInRange() {
+        if (villager != null || state != State.WAITING_FOR_VILLAGER_IN_RANGE) {
+            return;
         }
 
-    }
+        final Entity nearestVillager = EntityUtils.get(entity -> {
+            if (!entity.isAlive()) {
+                return false;
+            }
+            if (mc.player.distanceTo(entity) >= range.get()) {
+                return false;
+            }
 
+            if (entity == mc.player || entity.getType() != EntityType.VILLAGER) {
+                return false;
+            }
+            //Ah yes: redundant cast but suspicious call without the cast...
+            if (blacklistedVillagers.contains((VillagerEntity) entity)) {
+                return false;
+            }
+
+            if (((VillagerEntity) entity).getVillagerData().getProfession() != VillagerProfession.NONE && ((VillagerEntity) entity).getVillagerData().getProfession() != targetProfession.get().getProfession()) {
+                blacklistedVillagers.add((VillagerEntity) entity);
+                ChatUtils.prefixInfo(PREFIX, "Added Villager at %s to Blacklist", entity.getBlockPos().toShortString());
+                return false;
+            }
+            return !((VillagerEntity) entity).isBaby();
+        }, SortPriority.LowestDistance);
+
+        if (nearestVillager != null) {
+            villager = (VillagerEntity) nearestVillager;
+            state = State.WAITING_FOR_JOB;
+        }
+    }
 
     //<editor-fold desc="Event Handler">
     @EventHandler
@@ -242,84 +222,151 @@ public class AutoTrade extends Module {
                         event);
             }
         }
-
-    }
-
-    @EventHandler
-    private void onTick(TickEvent.Post event) {
-        if (!isActive()) {
-            return;
-        }
-
-        if (state == State.WAITING_FOR_VILLAGER_IN_RANGE || villager == null) {
-            scanForVillagerInRange();
-        } else if (state == State.WAITING_FOR_JOB) {
-            scanForJob();
-        } else if (state == State.CHECKING_TRADE) {
-            if (checkTrade()) {
-                state = State.FINISHED;
-                toggle();
-                ChatUtils.prefixInfo(PREFIX, "Got correct trade! Disabling!");
-                mc.player.playSound(new SoundEvent(new Identifier("minecraft:block.bell.use")), SoundCategory.PLAYERS, 2, 1);
-            } else {
-                try {
-                    if (!isBreakingWorkStation) {
-                        ChatUtils.info("Removing Workstation!");
-                        isBreakingWorkStation = true;
-                        removeWorkStation();
-                    } else {
-                        ChatUtils.info("is breaking workstation!");
-                    }
-                } catch (Exception e) {
-                    ChatUtils.info("Exception while trying to break block!");
-                    state = State.WAITING_FOR_VILLAGER_IN_RANGE;
-                    isBreakingWorkStation = false;
-                    e.printStackTrace();
-                }
+        if (blacklistTracers.get()) {
+            for (VillagerEntity villagerEntity : blacklistedVillagers) {
+                RenderUtils.drawTracerToEntity(event,
+                        villagerEntity,
+                        blackListTracersColor.get(),
+                        Modules.get().get(Tracers.class).target.get(),
+                        Modules.get().get(Tracers.class).stem.get());
             }
         }
 
     }
 
     @EventHandler
-    public void onEntityDeath(EntityDestroyEvent event) {
-        if (event.entity instanceof VillagerEntity) {
-            if (event.entity.equals(villager)) {
-                villager = null;
-                state = State.WAITING_FOR_VILLAGER_IN_RANGE;
-                ChatUtils.prefixInfo(PREFIX, "The villager just died");
-            }
-            //IntelliJ: Why is casting useless here, but without casting it's a "Suspicious call to 'List.remove'"?
-            excludedVillagers.remove((VillagerEntity) event.entity);
+    public void onTick(TickEvent.Post event) {
+        switch (state) {
+            case WAITING_FOR_VILLAGER_IN_RANGE:
+                scanForVillagerInRange();
+                break;
+            case WAITING_FOR_JOB:
+                placeWorkStation();
+                break;
         }
     }
 
-    @EventHandler
-    private void onVillagerProfessionUpdate(VillagerUpdateProfessionEvent event) {
-      /*
-       ChatUtils.info("Listener Called! Event Type: %s Profession: %s/%s",
-               event.action, event.oldData.getProfession(), event.newData.getProfession()
-       );
-      */
-        if (event.action == VillagerUpdateProfessionEvent.Action.LOST_JOB) {
-            if (event.entity.equals(villager)) {
+    private void placeWorkStation() {
+        if (workStation == null) {
+            workStation = new BlockPos.Mutable(mc.player.getPos().getX(),
+                    mc.player.getPos().getY(),
+                    mc.player.getPos().getZ()).add(getDirection().x, 0, getDirection().z);
+
+            final int slot = InvUtils.findItemInHotbar(targetProfession.get().getWorkStation());
+            if (slot == -1) {
+                ChatUtils.prefixError(PREFIX, "Could not find Item in hotbar! Looking for \"%s\"", targetProfession.get().getWorkStation().toString());
+                toggleIfNotContinueWorking();
+                return;
+            }
+            final BlockPos.Mutable center = new BlockPos.Mutable(mc.player.getPos().getX(),
+                    mc.player.getPos().getY(),
+                    mc.player.getPos().getZ());
+            //Try to place the block in every direction, beginning with the block in front of the player
+            if (BlockUtils.place(workStation, Hand.MAIN_HAND, slot, true, 50, true)) {
+                ChatUtils.prefixInfo(PREFIX, "Placed workstation at %s", workStation.toShortString());
                 state = State.WAITING_FOR_JOB;
-                workStation = null;
+            } else if (BlockUtils.place(center.north(), Hand.MAIN_HAND, slot, true, 50, true)) {
+                ChatUtils.prefixInfo(PREFIX, "Placed workstation at %s", center.north().toShortString());
+                workStation = center.north();
+                state = State.WAITING_FOR_JOB;
+            } else if (BlockUtils.place(center.east(), Hand.MAIN_HAND, slot, true, 50, true)) {
+                ChatUtils.prefixInfo(PREFIX, "Placed workstation at %s", center.east().toShortString());
+                workStation = center.east();
+                state = State.WAITING_FOR_JOB;
+            } else if (BlockUtils.place(center.south(), Hand.MAIN_HAND, slot, true, 50, true)) {
+                ChatUtils.prefixInfo(PREFIX, "Placed workstation at %s", center.south().toShortString());
+                workStation = center.south();
+                state = State.WAITING_FOR_JOB;
+            } else if (BlockUtils.place(center.west(), Hand.MAIN_HAND, slot, true, 50, true)) {
+                ChatUtils.prefixInfo(PREFIX, "Placed workstation at %s", center.west().toShortString());
+                workStation = center.west();
+                state = State.WAITING_FOR_JOB;
+            } else {
+                ChatUtils.prefixError(PREFIX, "Could not place workstation!");
             }
-            excludedVillagers.remove(event.entity);
         }
-
     }
 
     @EventHandler
     public void onBlockBreak(BreakBlockEvent event) {
+        if (state != State.REMOVING_WORKSTATION) {
+            return;
+        }
+        if (workStation == null) {
+            return;
+        }
+
         if (event.blockPos.equals(workStation)) {
-            isBreakingWorkStation = false;
-            ChatUtils.info("Workstation has been removed");
-            workStation = null;
-            state = State.WAITING_FOR_JOB;
+            reset();
+            ChatUtils.prefixInfo(PREFIX, "Mined workstation");
         }
     }
+
+    @EventHandler
+    public void onEntityDeath(EntityDestroyEvent event) {
+        if (villager != null) {
+            if (villager.equals(event.entity)) {
+                reset();
+                ChatUtils.prefixInfo(PREFIX, "Villager died");
+            }
+        }
+    }
+
+    @EventHandler
+    public void onVillagerGuiOpen(OpenVillagerGuiScreenEvent event) {
+        if (state != State.CHECKING_TRADE) {
+            return;
+        }
+        ChatUtils.prefixInfo(PREFIX, "Opened Villager Gui! requesting close!");
+        mc.openScreen(null);
+        if (checkTrade(event.merchant.getOffers())) {
+            state = State.FINISHED;
+            mc.player.playSound(new SoundEvent(new Identifier("minecraft:block.bell.use")), SoundCategory.MASTER, 2, 1);
+            ChatUtils.prefixInfo(PREFIX, "Got correct villager trade! Disabling AutoTrade!");
+            toggle();
+        } else {
+            mineWorkStation();
+        }
+
+    }
+
+    @EventHandler
+    public void onVillagerUpdateProfession(VillagerUpdateProfessionEvent event) {
+        if (event.action == VillagerUpdateProfessionEvent.Action.GOT_JOB) {
+            if (villager != null && workStation != null) {
+                if (villager.equals(event.entity)) {
+                    if (event.newData.getProfession() == targetProfession.get().getProfession()) {
+                        ChatUtils.prefixInfo(PREFIX, "Villager got correct profession");
+
+                        Rotations.rotate(Rotations.getYaw(villager), Rotations.getPitch(villager), 60, () -> {
+                            state = State.CHECKING_TRADE;
+                            mc.interactionManager.interactEntity(mc.player, villager, Hand.MAIN_HAND);
+                            mc.player.swingHand(Hand.MAIN_HAND);
+                            ChatUtils.prefixInfo(PREFIX, "Request Interaction!");
+
+                        });
+                    } else {
+                        reset();
+                        ChatUtils.prefixInfo(PREFIX, "Reset because villager got wrong profession");
+                    }
+                } else {
+                    ChatUtils.warning("Wrong Villager!");
+
+                }
+            }
+        } else {
+            blacklistedVillagers.remove(event.entity);
+
+            if (villager != null && workStation != null) {
+                if (villager.equals(event.entity)) {
+                    reset();
+                    ChatUtils.prefixInfo(PREFIX, "Reset because villager lost their profession");
+                }
+            }
+        }
+    }
+
+
     //</editor-fold>
 
     private void toggleIfNotContinueWorking() {
@@ -337,9 +384,9 @@ public class AutoTrade extends Module {
 
     public enum State {
         WAITING_FOR_VILLAGER_IN_RANGE,
-        REMOVING_WORKSTATION,
         WAITING_FOR_JOB,
         CHECKING_TRADE,
+        REMOVING_WORKSTATION,
         FINISHED;
 
         @Override
@@ -353,9 +400,7 @@ public class AutoTrade extends Module {
 
     }
 
-
     public static String[] getEnchantments(ItemStack itemStack) {
-
         final Map<Enchantment, Integer> enchantments = EnchantmentHelper.get(itemStack);
         final String[] enchs = new String[enchantments.size()];
         final int[] n = {0};
@@ -364,18 +409,8 @@ public class AutoTrade extends Module {
             n[0]++;
         });
         return enchs;
-        /*
-           ListTag listTag = itemStack.getEnchantments();
-
-           ChatUtils.info("Zero Compund Size: %d", listTag.getCompound(0).getSize());
-           for (int i = 0; i < listTag.size(); ++i) {
-               enchs[i] = String.format("Enchantment %s, %d",
-                       listTag.getCompound(i).getString("id"),
-                       listTag.getCompound(i).getInt("lvl"));
-           }
-           return enchs;
-         */
     }
+
     //<editor-fold desc="Stuff. was  private in other classes...">
 
 
@@ -393,7 +428,7 @@ public class AutoTrade extends Module {
     }
 
     private void setBlockPos(int x, int y, int z) {
-        workStation.set(mc.player.getX() + x, mc.player.getY() + y, mc.player.getZ() + z);
+        workStation = new BlockPos(mc.player.getX() + x, mc.player.getY() + y, mc.player.getZ() + z);
     }
 
     private int findSlot(VillagerProfession profession) {
@@ -475,16 +510,5 @@ public class AutoTrade extends Module {
         }
     }
 
-    private void mine(BlockPos blockPos) {
-        if (blockPos == null) {
-            ChatUtils.error("Why is blockPos null?");
-            return;
-        }
-        ChatUtils.info("Sent first Packet");
-        mc.getNetworkHandler().sendPacket(new PlayerActionC2SPacket(PlayerActionC2SPacket.Action.START_DESTROY_BLOCK, blockPos, net.minecraft.util.math.Direction.UP));
-        mc.player.swingHand(Hand.MAIN_HAND);
-        mc.getNetworkHandler().sendPacket(new PlayerActionC2SPacket(PlayerActionC2SPacket.Action.STOP_DESTROY_BLOCK, blockPos, net.minecraft.util.math.Direction.UP));
-        ChatUtils.info("Sent second Packet");
-    }
     //</editor-fold>
 }
