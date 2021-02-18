@@ -372,6 +372,7 @@ public class AutoTrade extends Module {
     private void toggleIfNotContinueWorking() {
         if (continueWorking.get()) {
             ChatUtils.prefixInfo(PREFIX, "Continued because continue working is on! Might cause issues!");
+            reset();
         } else {
             toggle();
         }
