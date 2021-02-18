@@ -54,6 +54,7 @@
     "FluidBlockMixin",
     "GameRendererMixin",
     "GenericContainerScreenMixin",
+    "GoToWorkTaskVillagerMixin",
     "HandledScreenMixin",
     "HeldItemRendererMixin",
     "HoeItemAccessor",
