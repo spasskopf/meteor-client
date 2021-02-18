@@ -2,7 +2,6 @@ package minegame159.meteorclient.mixin;
 
 import minegame159.meteorclient.MeteorClient;
 import minegame159.meteorclient.events.entity.VillagerUpdateProfessionEvent;
-import minegame159.meteorclient.utils.player.ChatUtils;
 import net.minecraft.entity.ai.brain.MemoryModuleType;
 import net.minecraft.entity.ai.brain.task.GoToWorkTask;
 import net.minecraft.entity.passive.VillagerEntity;
@@ -22,7 +21,7 @@ public abstract class GoToWorkTaskVillagerMixin {
 
     /**
      * @author notch or someone else & spasskopf
-     * @reason because i am lazy and couldn't fina another way
+     * @reason because i am lazy and couldn't find another way
      */
     @Overwrite()
     public void run(ServerWorld serverWorld, VillagerEntity villagerEntity, long l) {
@@ -43,9 +42,6 @@ public abstract class GoToWorkTaskVillagerMixin {
             }).ifPresent((villagerProfessionx) -> {
 
                 //Begin Meteor
-                ChatUtils.info("Villager Update! Old Profession: %s | new Profession %s",
-                        villagerEntity.getVillagerData().getProfession().toString(),
-                        villagerProfessionx.toString());
                 final VillagerData newData = villagerEntity.getVillagerData().withProfession(villagerProfessionx);
 
                 MeteorClient.EVENT_BUS.post(VillagerUpdateProfessionEvent.get(
@@ -53,7 +49,6 @@ public abstract class GoToWorkTaskVillagerMixin {
                         villagerEntity.getVillagerData(), newData,
                         VillagerUpdateProfessionEvent.Action.GOT_JOB
                 ));
-                ChatUtils.info("Posted in Event Bus!");
 
                 villagerEntity.setVillagerData(newData);
                 //End Meteor
