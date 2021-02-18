@@ -412,7 +412,6 @@ public class AutoTrade extends Module {
         return -1;
     }
 
-
     protected Direction getDirection() {
         Direction dir;
         float yaw = mc.gameRenderer.getCamera().getYaw() % 360;
@@ -489,4 +488,3 @@ public class AutoTrade extends Module {
     }
     //</editor-fold>
 }
-
