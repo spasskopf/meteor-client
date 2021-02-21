@@ -9,7 +9,7 @@ package minegame159.meteorclient.modules.player;
 
 import meteordevelopment.orbit.EventHandler;
 import minegame159.meteorclient.events.world.TickEvent;
-import minegame159.meteorclient.modules.Category;
+import minegame159.meteorclient.modules.Categories;
 import minegame159.meteorclient.modules.Module;
 import minegame159.meteorclient.modules.Modules;
 import minegame159.meteorclient.modules.combat.AutoArmor;
@@ -51,7 +51,7 @@ public class AutoMend extends Module {
     );
 
     public AutoMend() {
-        super(Category.Player, "auto-mend", "Automatically replaces equipped items and items in your offhand with Mending when fully repaired.");
+        super(Categories.Player, "auto-mend", "Automatically replaces equipped items and items in your offhand with Mending when fully repaired.");
     }
 
     private void replaceItem(boolean offhandEmpty) {
@@ -102,7 +102,7 @@ public class AutoMend extends Module {
 
     @EventHandler
     private void onTick(TickEvent.Post event) {
-        if (mc.player.currentScreenHandler.getStacks().size() < 45) return;
+        if (mc.player.currentScreenHandler.getStacks().size() != 46) return;
 
         if (mc.player.getOffHandStack().isEmpty()) replaceItem(true);
         else if (!mc.player.getOffHandStack().isDamaged()) replaceItem(false);

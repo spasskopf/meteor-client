@@ -39,29 +39,21 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(Entity.class)
 public abstract class EntityMixin {
-    @Shadow
-    public World world;
+    @Shadow public World world;
 
-    @Shadow
-    public abstract BlockPos getBlockPos();
+    @Shadow public abstract BlockPos getBlockPos();
 
-    @Shadow
-    protected abstract BlockPos getVelocityAffectingPos();
+    @Shadow protected abstract BlockPos getVelocityAffectingPos();
 
-    @Shadow
-    public abstract void setVelocity(double x, double y, double z);
+    @Shadow public abstract void setVelocity(double x, double y, double z);
 
     @Inject(method = "setVelocityClient", at = @At("HEAD"), cancellable = true)
     private void onSetVelocityClient(double x, double y, double z, CallbackInfo info) {
         PlayerEntity player = MinecraftClient.getInstance().player;
-        if (((Object) this) != player) {
-            return;
-        }
+        if (((Object) this) != player) return;
 
         Velocity velocity = Modules.get().get(Velocity.class);
-        if (!velocity.isActive() || !velocity.entities.get()) {
-            return;
-        }
+        if (!velocity.isActive() || !velocity.entities.get()) return;
 
         double deltaX = x - player.getVelocity().x;
         double deltaY = y - player.getVelocity().y;
@@ -104,9 +96,7 @@ public abstract class EntityMixin {
     private Vec3d addVelocityVec3dAddProxy(Vec3d vec3d, double x, double y, double z) {
         Velocity velocity = Modules.get().get(Velocity.class);
 
-        if ((Object) this != MinecraftClient.getInstance().player || Utils.isReleasingTrident || !velocity.entities.get()) {
-            return vec3d.add(x, y, z);
-        }
+        if ((Object) this != MinecraftClient.getInstance().player || Utils.isReleasingTrident || !velocity.entities.get()) return vec3d.add(x, y, z);
 
         return vec3d.add(x * velocity.getHorizontal(), y * velocity.getVertical(), z * velocity.getHorizontal());
     }
@@ -136,9 +126,9 @@ public abstract class EntityMixin {
 
     @Inject(method = "isInvisibleTo(Lnet/minecraft/entity/player/PlayerEntity;)Z", at = @At("HEAD"), cancellable = true)
     private void isInvisibleToCanceller(PlayerEntity player, CallbackInfoReturnable<Boolean> info) {
-        if (Modules.get().isActive(ESP.class) && Modules.get().get(ESP.class).showInvis.get()) {
-            info.setReturnValue(false);
-        }
+        if (player == null) info.setReturnValue(false);
+
+        if (Modules.get().isActive(ESP.class) && Modules.get().get(ESP.class).showInvis.get()) info.setReturnValue(false);
     }
 
     @Inject(method = "getTargetingMargin", at = @At("HEAD"), cancellable = true)

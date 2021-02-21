@@ -6,10 +6,8 @@
 package minegame159.meteorclient.gui.screens.topbar;
 
 import minegame159.meteorclient.Config;
-import minegame159.meteorclient.settings.BoolSetting;
-import minegame159.meteorclient.settings.SettingGroup;
-import minegame159.meteorclient.settings.Settings;
-import minegame159.meteorclient.settings.StringSetting;
+import minegame159.meteorclient.settings.*;
+import minegame159.meteorclient.utils.network.OnlinePlayers;
 
 public class TopBarConfig extends TopBarWindowScreen {
     public TopBarConfig() {
@@ -58,6 +56,27 @@ public class TopBarConfig extends TopBarWindowScreen {
                 .defaultValue(true)
                 .onChanged(aBoolean -> Config.get().deleteChatCommandsInfo = aBoolean)
                 .onModuleActivated(booleanSetting -> booleanSetting.set(Config.get().deleteChatCommandsInfo))
+                .build()
+        );
+
+        sgGeneral.add(new BoolSetting.Builder()
+                .name("send-data-to-api")
+                .description("If checked, your UUID will be send to Meteor's servers.")
+                .defaultValue(true)
+                .onChanged(aBoolean -> {
+                    Config.get().sendDataToApi = aBoolean;
+                    OnlinePlayers.forcePing();
+                })
+                .onModuleActivated(booleanSetting -> booleanSetting.set(Config.get().sendDataToApi))
+                .build()
+        );
+
+        sgGeneral.add(new IntSetting.Builder()
+                .name("rotation-hold-ticks")
+                .description("Hold long to hold server side rotation when not sending any packets.")
+                .defaultValue(9)
+                .onChanged(integer -> Config.get().rotationHoldTicks = integer)
+                .onModuleActivated(integerSetting -> integerSetting.set(Config.get().rotationHoldTicks))
                 .build()
         );
 

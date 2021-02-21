@@ -15,7 +15,7 @@ import minegame159.meteorclient.events.render.Render2DEvent;
 import minegame159.meteorclient.events.render.RenderEvent;
 import minegame159.meteorclient.events.world.TickEvent;
 import minegame159.meteorclient.friends.Friends;
-import minegame159.meteorclient.modules.Category;
+import minegame159.meteorclient.modules.Categories;
 import minegame159.meteorclient.modules.Module;
 import minegame159.meteorclient.rendering.Renderer;
 import minegame159.meteorclient.rendering.ShapeMode;
@@ -489,7 +489,7 @@ public class CrystalAura extends Module {
     );
 
     public CrystalAura() {
-        super(Category.Combat, "crystal-aura", "Automatically places and breaks crystals to damage other players.");
+        super(Categories.Combat, "crystal-aura", "Automatically places and breaks crystals to damage other players.");
     }
 
     private int preSlot;
@@ -673,21 +673,23 @@ public class CrystalAura extends Module {
                     }
                 }
             }
+
             if (bestBlock != null && ((bestDamage >= minDamage.get() && !locked) || shouldFacePlace)) {
                 if (switchMode.get() != SwitchMode.None) doSwitch();
                 if (mc.player.getMainHandStack().getItem() != Items.END_CRYSTAL && mc.player.getOffHandStack().getItem() != Items.END_CRYSTAL) return;
+
                 if (!smartDelay.get()) {
                     placeDelayLeft = placeDelay.get();
                     placeBlock(bestBlock, getHand());
-                }else if (smartDelay.get() && (placeDelayLeft <= 0 || bestDamage - lastDamage > healthDifference.get()
-                        || (spamFacePlace.get() && shouldFacePlace))) {
+                }
+                else if (smartDelay.get() && (placeDelayLeft <= 0 || bestDamage - lastDamage > healthDifference.get() || (spamFacePlace.get() && shouldFacePlace))) {
                     lastDamage = bestDamage;
                     placeBlock(bestBlock, getHand());
-                    if (placeDelayLeft <= 0) {
-                        placeDelayLeft = 10;
-                    }
+
+                    if (placeDelayLeft <= 0) placeDelayLeft = 10;
                 }
             }
+
             if (switchMode.get() == SwitchMode.Spoof && preSlot != mc.player.inventory.selectedSlot && preSlot != -1) {
                 mc.player.inventory.selectedSlot = preSlot;
             }
@@ -696,9 +698,7 @@ public class CrystalAura extends Module {
 
     @EventHandler
     private void onRender(RenderEvent event) {
-        if (!render.get()) {
-            return;
-        }
+        if (!render.get()) return;
 
         for (RenderBlock renderBlock : renderBlocks) {
             renderBlock.render3D();
@@ -707,9 +707,7 @@ public class CrystalAura extends Module {
 
     @EventHandler
     private void onRender2D(Render2DEvent event) {
-        if (!render.get()) {
-            return;
-        }
+        if (!render.get()) return;
 
         for (RenderBlock renderBlock : renderBlocks) {
             renderBlock.render2D();
@@ -813,14 +811,9 @@ public class CrystalAura extends Module {
 
     private void attackCrystal(EndCrystalEntity entity, int preSlot) {
         mc.interactionManager.attackEntity(mc.player, entity);
-        if (removeCrystals.get()) {
-            removalQueue.add(entity.getEntityId());
-        }
-        if (swing.get()) {
-            mc.player.swingHand(getHand());
-        } else {
-            mc.player.networkHandler.sendPacket(new HandSwingC2SPacket(getHand()));
-        }
+        if (removeCrystals.get()) removalQueue.add(entity.getEntityId());
+        if (swing.get()) mc.player.swingHand(getHand());
+        else mc.player.networkHandler.sendPacket(new HandSwingC2SPacket(getHand()));
         mc.player.inventory.selectedSlot = preSlot;
         if (heldCrystal != null && entity.getBlockPos().equals(heldCrystal.getBlockPos())) {
             heldCrystal = null;
@@ -889,19 +882,13 @@ public class CrystalAura extends Module {
                     blockPos.getZ() + 0.5 + direction.getVector().getZ() * 1.0 / 2.0) : block.add(0.5, 1.0, 0.5));
             Rotations.rotate(rotation[0], rotation[1], 25, () -> {
                 mc.interactionManager.interactBlock(mc.player, mc.world, hand, new BlockHitResult(mc.player.getPos(), direction, blockPos, false));
-                if (swing.get()) {
-                    mc.player.swingHand(hand);
-                } else {
-                    mc.player.networkHandler.sendPacket(new HandSwingC2SPacket(hand));
-                }
+                if (swing.get()) mc.player.swingHand(hand);
+                else mc.player.networkHandler.sendPacket(new HandSwingC2SPacket(hand));
             });
         } else {
             mc.interactionManager.interactBlock(mc.player, mc.world, hand, new BlockHitResult(mc.player.getPos(), direction, new BlockPos(block), false));
-            if (swing.get()) {
-                mc.player.swingHand(hand);
-            } else {
-                mc.player.networkHandler.sendPacket(new HandSwingC2SPacket(hand));
-            }
+            if (swing.get()) mc.player.swingHand(hand);
+            else mc.player.networkHandler.sendPacket(new HandSwingC2SPacket(hand));
         }
 
         if (render.get()) {
@@ -1119,9 +1106,7 @@ public class CrystalAura extends Module {
         }
 
         public boolean shouldRemove() {
-            if (timer <= 0) {
-                return true;
-            }
+            if (timer <= 0) return true;
             timer--;
             return false;
         }

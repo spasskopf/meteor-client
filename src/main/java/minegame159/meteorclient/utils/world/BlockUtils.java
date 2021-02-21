@@ -24,12 +24,9 @@ public class BlockUtils {
 
     public static boolean place(BlockPos blockPos, Hand hand, int slot, boolean rotate, int priority, boolean swing, boolean checkEntity, boolean swap, boolean swapBack) {
         if (!checkEntity) {
-            if (!mc.world.getBlockState(blockPos).getMaterial().isReplaceable()) {
-                return false;
-            }
-        } else if (slot == -1 || !canPlace(blockPos)) {
-            return false;
+            if (!mc.world.getBlockState(blockPos).getMaterial().isReplaceable()) return false;
         }
+        else if (slot == -1 || !canPlace(blockPos)) return false;
 
         Direction side = getPlaceSide(blockPos);
         BlockPos neighbour;
@@ -38,31 +35,29 @@ public class BlockUtils {
         if (side == null) {
             side = Direction.UP;
             neighbour = blockPos;
-            ((IVec3d) hitPos).set(blockPos);
-        } else {
+            ((IVec3d) hitPos).set(blockPos.getX() + 0.5, blockPos.getY() + 0.5, blockPos.getZ() + 0.5);
+        }
+        else {
             neighbour = blockPos.offset(side.getOpposite());
-            ((IVec3d) hitPos).set(neighbour.getX() + 0.5 + side.getOffsetX() * 0.5, neighbour.getY() + 0.5 + side.getOffsetY() * 0.5, neighbour.getZ() + 0.5 + side.getOffsetZ() * 0.5);
+            // The Y is not 0.5 but 0.6 for allowing "antiAnchor" placement. This should not damage any other modules
+            ((IVec3d) hitPos).set(neighbour.getX() + 0.5 + side.getOffsetX() * 0.5, neighbour.getY() + 0.6 + side.getOffsetY() * 0.5, neighbour.getZ() + 0.5 + side.getOffsetZ() * 0.5);
         }
 
         if (rotate) {
             Direction s = side;
             Rotations.rotate(Rotations.getYaw(hitPos), Rotations.getPitch(hitPos), priority, () -> place(slot, hitPos, hand, s, neighbour, swing, swap, swapBack));
-        } else {
-            place(slot, hitPos, hand, side, neighbour, swing, swap, swapBack);
         }
+        else place(slot, hitPos, hand, side, neighbour, swing, swap, swapBack);
 
         return true;
     }
-
     public static boolean place(BlockPos blockPos, Hand hand, int slot, boolean rotate, int priority, boolean checkEntity) {
         return place(blockPos, hand, slot, rotate, priority, true, checkEntity, true, true);
     }
 
     private static void place(int slot, Vec3d hitPos, Hand hand, Direction side, BlockPos neighbour, boolean swing, boolean swap, boolean swapBack) {
         int preSlot = mc.player.inventory.selectedSlot;
-        if (swap) {
-            InvUtils.swap(slot);
-        }
+        if (swap) InvUtils.swap(slot);
 
         boolean wasSneaking = mc.player.input.sneaking;
         mc.player.input.sneaking = false;

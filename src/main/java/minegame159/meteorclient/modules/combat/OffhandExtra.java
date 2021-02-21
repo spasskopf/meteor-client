@@ -5,13 +5,11 @@
 
 package minegame159.meteorclient.modules.combat;
 
-//Created by squidoodly 25/04/2020
-
 import meteordevelopment.orbit.EventHandler;
 import minegame159.meteorclient.events.entity.player.RightClickEvent;
 import minegame159.meteorclient.events.world.TickEvent;
 import minegame159.meteorclient.gui.WidgetScreen;
-import minegame159.meteorclient.modules.Category;
+import minegame159.meteorclient.modules.Categories;
 import minegame159.meteorclient.modules.Module;
 import minegame159.meteorclient.modules.Modules;
 import minegame159.meteorclient.settings.*;
@@ -21,10 +19,6 @@ import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.item.*;
 
-import java.util.ArrayList;
-import java.util.List;
-
-@InvUtils.Priority(priority = 1)
 public class OffhandExtra extends Module {
     public enum Mode{
         EGap,
@@ -105,7 +99,7 @@ public class OffhandExtra extends Module {
     );
 
     public OffhandExtra() {
-        super(Category.Combat, "offhand-extra", "Allows you to use specified items in your offhand. REQUIRES AutoTotem to be on smart mode.");
+        super(Categories.Combat, "offhand-extra", "Allows you to use specified items in your offhand. REQUIRES AutoTotem to be on smart mode.");
     }
 
     private boolean isClicking = false;
@@ -126,7 +120,7 @@ public class OffhandExtra extends Module {
         if (Modules.get().isActive(AutoTotem.class) && mc.player.getOffHandStack().getItem() != Items.TOTEM_OF_UNDYING) {
             InvUtils.FindItemResult result = InvUtils.findItemWithCount(Items.TOTEM_OF_UNDYING);
             if (result.slot != -1) {
-                doMove(result.slot);
+                InvUtils.addSlots(2, 45, result.slot, 1);
             }
         }
     }
@@ -152,7 +146,7 @@ public class OffhandExtra extends Module {
                     if (mc.player.getOffHandStack().getItem() != getItem()) {
                         result = findSlot(getItem());
                         if (result != -1) {
-                            doMove(result);
+                            InvUtils.addSlots(2, 45, result, 1);
                             return;
                         }
                     }
@@ -165,13 +159,13 @@ public class OffhandExtra extends Module {
                 return;
             }
             if (mc.player.getOffHandStack().getItem() != getItem() && replace.get()) {
-                doMove(result);
+                InvUtils.addSlots(2, 45, result, 1);
                 sentMessage = false;
             }
         } else if (!asimov.get() && !isClicking && mc.player.getOffHandStack().getItem() != Items.TOTEM_OF_UNDYING) {
             int result = findSlot(Items.TOTEM_OF_UNDYING);
             if (result != -1) {
-                doMove(result);
+                InvUtils.addSlots(2, 45, result, 1);
             }
 
         }
@@ -200,7 +194,7 @@ public class OffhandExtra extends Module {
                 return;
             }
             if (mc.player.getOffHandStack().getItem() != item && mc.player.getMainHandStack().getItem() != item && replace.get()) {
-                doMove(result);
+                InvUtils.addSlots(2, 45, result, 1);
                 sentMessage = false;
             }
             currentMode = mode.get();
@@ -229,19 +223,13 @@ public class OffhandExtra extends Module {
         assert mc.player != null;
         return mc.player.getMainHandStack().getItem() != Items.BOW
                 && mc.player.getMainHandStack().getItem() != Items.TRIDENT
-                && mc.player.getMainHandStack().getItem() != Items.CROSSBOW;
+                && mc.player.getMainHandStack().getItem() != Items.CROSSBOW
+                && !mc.player.getMainHandStack().getItem().isFood();
     }
 
     private void doMove(int slot){
         assert mc.player != null;
-        boolean empty = mc.player.getOffHandStack().isEmpty();
-        List<Integer> slots = new ArrayList<>();
-        if(mc.player.inventory.getCursorStack().getItem() != Items.TOTEM_OF_UNDYING) {
-            slots.add(InvUtils.invIndexToSlotId(slot));
-        }
-        slots.add(InvUtils.invIndexToSlotId(InvUtils.OFFHAND_SLOT));
-        if (!empty) slots.add(InvUtils.invIndexToSlotId(slot));
-        InvUtils.addSlots(slots, this.getClass());
+
     }
 
     private int findSlot(Item item){

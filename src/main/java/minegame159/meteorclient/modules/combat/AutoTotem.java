@@ -5,14 +5,10 @@
 
 package minegame159.meteorclient.modules.combat;
 
-//Updated by squidoodly 24/04/2020
-//Updated by squidoodly 19/06/2020
-//Updated by squidoodly 30/12/2020
-
 import meteordevelopment.orbit.EventHandler;
 import minegame159.meteorclient.events.world.TickEvent;
 import minegame159.meteorclient.friends.Friends;
-import minegame159.meteorclient.modules.Category;
+import minegame159.meteorclient.modules.Categories;
 import minegame159.meteorclient.modules.Module;
 import minegame159.meteorclient.modules.Modules;
 import minegame159.meteorclient.modules.movement.NoFall;
@@ -36,10 +32,6 @@ import net.minecraft.item.Items;
 import net.minecraft.item.SwordItem;
 import net.minecraft.util.math.Vec3d;
 
-import java.util.ArrayList;
-import java.util.List;
-
-@InvUtils.Priority(priority = Integer.MAX_VALUE)
 public class AutoTotem extends Module {
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
 
@@ -87,7 +79,7 @@ public class AutoTotem extends Module {
     private boolean locked = false;
 
     public AutoTotem() {
-        super(Category.Combat, "auto-totem", "Automatically equips totems in your offhand.");
+        super(Categories.Combat, "auto-totem", "Automatically equips totems in your offhand.");
     }
 
     @Override
@@ -115,7 +107,7 @@ public class AutoTotem extends Module {
             if (mc.player.getOffHandStack().getItem() != Items.TOTEM_OF_UNDYING && (!smart.get()
                     || isLow() || elytraMove())) {
                 locked = true;
-                moveTotem(result);
+                InvUtils.addSlots(2, 45, result.slot, 1000);
             } else if (smart.get() && !isLow() && !elytraMove()) {
                 locked = false;
             }
@@ -127,18 +119,6 @@ public class AutoTotem extends Module {
     @Override
     public String getInfoString() {
         return totemCountString;
-    }
-
-    private void moveTotem(InvUtils.FindItemResult result){
-        assert mc.player != null;
-        boolean empty = mc.player.getOffHandStack().isEmpty();
-        List<Integer> slots = new ArrayList<>();
-        if(mc.player.inventory.getCursorStack().getItem() != Items.TOTEM_OF_UNDYING) {
-            slots.add(InvUtils.invIndexToSlotId(result.slot));
-        }
-        slots.add(InvUtils.invIndexToSlotId(InvUtils.OFFHAND_SLOT));
-        if (!empty) slots.add(InvUtils.invIndexToSlotId(result.slot));
-        InvUtils.addSlots(slots, this.getClass());
     }
 
     private double getHealthReduction(){

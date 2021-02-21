@@ -43,6 +43,8 @@
     "CobwebBlockMixin",
     "CrashReportMixin",
     "CreativeInventoryScreenAccessor",
+    "DefaultSkinHelperMixin",
+    "DimensionTypeAccessor",
     "DisconnectedScreenMixin",
     "EnchantingTableBlockEntityRendererMixin",
     "EntityMixin",

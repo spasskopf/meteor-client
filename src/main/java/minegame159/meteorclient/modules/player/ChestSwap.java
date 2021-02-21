@@ -6,7 +6,7 @@
 package minegame159.meteorclient.modules.player;
 
 import minegame159.meteorclient.Config;
-import minegame159.meteorclient.modules.Category;
+import minegame159.meteorclient.modules.Categories;
 import minegame159.meteorclient.modules.Module;
 import minegame159.meteorclient.settings.BoolSetting;
 import minegame159.meteorclient.settings.EnumSetting;
@@ -19,10 +19,6 @@ import net.minecraft.item.ArmorItem;
 import net.minecraft.item.Item;
 import net.minecraft.item.Items;
 
-import java.util.ArrayList;
-import java.util.List;
-
-@InvUtils.Priority(priority = 0)
 public class ChestSwap extends Module {
     public enum Chestplate {
         Diamond,
@@ -48,7 +44,7 @@ public class ChestSwap extends Module {
     );
 
     public ChestSwap() {
-        super(Category.Player, "chest-swap", "Automatically swaps between a chestplate and an elytra.");
+        super(Categories.Player, "chest-swap", "Automatically swaps between a chestplate and an elytra.");
     }
 
     @Override
@@ -132,13 +128,7 @@ public class ChestSwap extends Module {
 
     private void equip(int slot) {
         int chestSlot = 8 - 2;
-        slot = InvUtils.invIndexToSlotId(slot);
-
-        List<Integer> slots = new ArrayList<>();
-        slots.add(InvUtils.invIndexToSlotId(slot));
-        slots.add(chestSlot);
-        slots.add(InvUtils.invIndexToSlotId(slot));
-        InvUtils.addSlots(slots, this.getClass());
+        InvUtils.addSlots(2, chestSlot, slot, 0);
     }
 
     @Override

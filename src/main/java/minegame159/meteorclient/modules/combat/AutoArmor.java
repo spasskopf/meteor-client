@@ -5,11 +5,9 @@
 
 package minegame159.meteorclient.modules.combat;
 
-//Rewritten by squidoodly 25/07/2020
-
 import meteordevelopment.orbit.EventHandler;
 import minegame159.meteorclient.events.world.TickEvent;
-import minegame159.meteorclient.modules.Category;
+import minegame159.meteorclient.modules.Categories;
 import minegame159.meteorclient.modules.Module;
 import minegame159.meteorclient.modules.Modules;
 import minegame159.meteorclient.modules.player.ChestSwap;
@@ -33,7 +31,6 @@ import net.minecraft.util.math.Vec3d;
 import java.util.ArrayList;
 import java.util.List;
 
-@InvUtils.Priority(priority = Integer.MAX_VALUE - 1)
 public class AutoArmor extends Module {
     public enum Prot{
         Protection(Enchantments.PROTECTION),
@@ -48,7 +45,9 @@ public class AutoArmor extends Module {
         }
     }
 
-    public AutoArmor(){super(Category.Combat, "auto-armor", "Automatically manages and equips your armor for you.");}
+    public AutoArmor() {
+        super(Categories.Combat, "auto-armor", "Automatically manages and equips your armor for you.");
+    }
 
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
     private final SettingGroup sgDelay = settings.createGroup("Delay");
@@ -233,12 +232,7 @@ public class AutoArmor extends Module {
                 }
             }
             if (bestSlot > -1) {
-                List<Integer> slots = new ArrayList<>();
-                slots.add(InvUtils.invIndexToSlotId(bestSlot));
-                //Work out what slot ID is needed for this to work properly.
-                slots.add(8 - a);
-                slots.add(InvUtils.invIndexToSlotId(bestSlot));
-                InvUtils.addSlots(slots, this.getClass());
+                InvUtils.addSlots(2, 8 - a, bestSlot, 999);
                 if (pause.get()) break;
             }
             mode.set(preMode);

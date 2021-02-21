@@ -5,6 +5,7 @@
 
 package minegame159.meteorclient.utils.network;
 
+import minegame159.meteorclient.Config;
 import net.minecraft.client.MinecraftClient;
 
 public class OnlinePlayers {
@@ -18,13 +19,17 @@ public class OnlinePlayers {
                 String url = "http://meteorclient.com/api/online/ping";
 
                 String uuid = MinecraftClient.getInstance().getSession().getUuid();
-                if (uuid != null && !uuid.isEmpty()) url += "?uuid=" + uuid;
+                if (uuid != null && !uuid.isEmpty() && Config.get().sendDataToApi) url += "?uuid=" + uuid;
 
                 HttpUtils.post(url);
             });
 
             lastPingTime = time;
         }
+    }
+
+    public static void forcePing() {
+        lastPingTime = 0;
     }
 
     public static void leave() {

@@ -8,7 +8,7 @@ package minegame159.meteorclient.modules.player;
 import meteordevelopment.orbit.EventHandler;
 import minegame159.meteorclient.events.world.TickEvent;
 import minegame159.meteorclient.mixin.ItemStackAccessor;
-import minegame159.meteorclient.modules.Category;
+import minegame159.meteorclient.modules.Categories;
 import minegame159.meteorclient.modules.Module;
 import minegame159.meteorclient.modules.Modules;
 import minegame159.meteorclient.modules.combat.AutoTotem;
@@ -21,7 +21,6 @@ import net.minecraft.item.Items;
 import java.util.ArrayList;
 import java.util.List;
 
-@InvUtils.Priority(priority = 1)
 public class AutoReplenish extends Module {
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
 
@@ -76,7 +75,7 @@ public class AutoReplenish extends Module {
     private int tickDelayLeft;
 
     public AutoReplenish(){
-        super(Category.Player, "auto-replenish", "Automatically refills items in your hotbar, main hand, or offhand.");
+        super(Categories.Player, "auto-replenish", "Automatically refills items in your hotbar, main hand, or offhand.");
 
         for (int i = 0; i < items.length; i++) items[i] = new ItemStack(Items.AIR);
     }
@@ -95,7 +94,7 @@ public class AutoReplenish extends Module {
         }
 
         prevHadOpenScreen = mc.currentScreen != null;
-        if (mc.player.currentScreenHandler.getStacks().size() < 45 || mc.currentScreen != null) return;
+        if (mc.player.currentScreenHandler.getStacks().size() != 46 || mc.currentScreen != null) return;
 
         if (tickDelayLeft <= 0) {
             tickDelayLeft = tickDelay.get();
@@ -160,18 +159,12 @@ public class AutoReplenish extends Module {
             }
         }
 
-        return slot;
+        return InvUtils.invIndexToSlotId(slot);
     }
 
     private void addSlots(int to, int from) {
         if (to == -1 || from == -1) return;
-
-        List<Integer> slots = new ArrayList<>(3);
-        slots.add(InvUtils.invIndexToSlotId(from));
-        slots.add(InvUtils.invIndexToSlotId(to));
-        slots.add(InvUtils.invIndexToSlotId(from));
-
-        InvUtils.addSlots(slots, this.getClass());
+        InvUtils.addSlots(1, InvUtils.invIndexToSlotId(to), from, 1);
     }
 
     private void fillItems() {

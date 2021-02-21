@@ -23,7 +23,6 @@ import minegame159.meteorclient.modules.movement.speed.Speed;
 import minegame159.meteorclient.modules.player.*;
 import minegame159.meteorclient.modules.render.*;
 import minegame159.meteorclient.modules.render.hud.HUD;
-import minegame159.meteorclient.settings.ColorSetting;
 import minegame159.meteorclient.settings.Setting;
 import minegame159.meteorclient.settings.SettingGroup;
 import minegame159.meteorclient.systems.System;
@@ -33,8 +32,6 @@ import minegame159.meteorclient.utils.misc.input.Input;
 import minegame159.meteorclient.utils.misc.input.KeyAction;
 import minegame159.meteorclient.utils.player.ChatUtils;
 import minegame159.meteorclient.utils.player.InvUtils;
-import minegame159.meteorclient.utils.render.color.RainbowColors;
-import minegame159.meteorclient.utils.render.color.SettingColor;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -49,8 +46,10 @@ import javax.annotation.Nullable;
 import java.util.*;
 
 public class Modules extends System<Modules> {
-    public static final Category[] CATEGORIES = {Category.Combat, Category.Player, Category.Movement, Category.Render, Category.Misc};
     public static final ModuleRegistry REGISTRY = new ModuleRegistry();
+
+    private static final List<Category> CATEGORIES = new ArrayList<>();
+    public static boolean REGISTERING_CATEGORIES;
 
     private final Map<Class<? extends Module>, Module> modules = new HashMap<>();
     private final Map<Category, List<Module>> groups = new HashMap<>();
@@ -79,6 +78,24 @@ public class Modules extends System<Modules> {
         for (List<Module> modules : groups.values()) {
             modules.sort(Comparator.comparing(o -> o.title));
         }
+    }
+
+    public static void registerCategory(Category category) {
+        if (!REGISTERING_CATEGORIES) throw new RuntimeException("Modules.registerCategory - Cannot register category outside of onRegisterCategories callback.");
+
+        CATEGORIES.add(category);
+    }
+
+    public static Iterable<Category> loopCategories() {
+        return CATEGORIES;
+    }
+
+    public static Category getCategoryByHash(int hash) {
+        for (Category category : CATEGORIES) {
+            if (category.hashCode() == hash) return category;
+        }
+
+        return null;
     }
 
     @SuppressWarnings("unchecked")
@@ -271,24 +288,21 @@ public class Modules extends System<Modules> {
     // INIT MODULES
 
     public void addModule(Module module) {
+        if (!CATEGORIES.contains(module.category)) {
+            throw new RuntimeException("Modules.addModule - Module's category was not registered.");
+        }
+
         modules.put(module.getClass(), module);
         getGroup(module.category).add(module);
 
-        for (SettingGroup group : module.settings) {
-            for (Setting<?> setting : group) {
-                setting.module = module;
-
-                if (setting instanceof ColorSetting) {
-                    RainbowColors.addSetting((Setting<SettingColor>) setting);
-                }
-            }
-        }
+        module.settings.registerColorSettings(module);
     }
 
     private void initCombat() {
         addModule(new AimAssist());
         addModule(new AnchorAura());
         addModule(new AntiAnvil());
+        addModule(new AntiAnchor());
         addModule(new AntiBed());
         addModule(new AntiFriendHit());
         addModule(new Auto32K());

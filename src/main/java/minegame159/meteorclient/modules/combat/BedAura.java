@@ -5,13 +5,10 @@
 
 package minegame159.meteorclient.modules.combat;
 
-// Created by squidoodly 03/06/2020
-// Updated by squidoodly 19/06/2020
-
 import meteordevelopment.orbit.EventHandler;
 import minegame159.meteorclient.events.render.RenderEvent;
 import minegame159.meteorclient.events.world.TickEvent;
-import minegame159.meteorclient.modules.Category;
+import minegame159.meteorclient.modules.Categories;
 import minegame159.meteorclient.modules.Module;
 import minegame159.meteorclient.rendering.Renderer;
 import minegame159.meteorclient.rendering.ShapeMode;
@@ -30,12 +27,7 @@ import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 
-import java.util.ArrayList;
-import java.util.List;
-
-@InvUtils.Priority(priority = 0)
 public class BedAura extends Module {
-
     private enum Stage {
         Placing,
         Breaking
@@ -240,7 +232,7 @@ public class BedAura extends Module {
     private Stage stage;
 
     public BedAura(){
-        super(Category.Combat, "bed-aura", "Automatically places and explodes beds in the Nether and End.");
+        super(Categories.Combat, "bed-aura", "Automatically places and explodes beds in the Nether and End.");
     }
 
     @Override
@@ -397,11 +389,7 @@ public class BedAura extends Module {
     private void doAutoMove() {
         if (InvUtils.findItemInHotbar(itemStack -> itemStack.getItem() instanceof BedItem) == -1) {
             int slot = InvUtils.findItemInMain(itemStack -> itemStack.getItem() instanceof BedItem);
-            List<Integer> slots = new ArrayList<>();
-            slots.add(InvUtils.invIndexToSlotId(autoMoveSlot.get()-1));
-            slots.add(InvUtils.invIndexToSlotId(slot));
-            slots.add(InvUtils.invIndexToSlotId(autoMoveSlot.get()-1));
-            InvUtils.addSlots(slots, this.getClass());
+            InvUtils.addSlots(2, slot, autoMoveSlot.get() - 1, 0);
         }
     }
 

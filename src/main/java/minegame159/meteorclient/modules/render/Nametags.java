@@ -13,7 +13,7 @@ import it.unimi.dsi.fastutil.objects.Object2BooleanMap;
 import meteordevelopment.orbit.EventHandler;
 import minegame159.meteorclient.events.render.Render2DEvent;
 import minegame159.meteorclient.friends.Friends;
-import minegame159.meteorclient.modules.Category;
+import minegame159.meteorclient.modules.Categories;
 import minegame159.meteorclient.modules.Module;
 import minegame159.meteorclient.modules.Modules;
 import minegame159.meteorclient.modules.player.FakePlayer;
@@ -26,6 +26,7 @@ import minegame159.meteorclient.utils.Utils;
 import minegame159.meteorclient.utils.entity.EntityUtils;
 import minegame159.meteorclient.utils.entity.FakePlayerEntity;
 import minegame159.meteorclient.utils.entity.FakePlayerUtils;
+import minegame159.meteorclient.utils.misc.MeteorPlayers;
 import minegame159.meteorclient.utils.misc.Vec3;
 import minegame159.meteorclient.utils.render.NametagUtils;
 import minegame159.meteorclient.utils.render.color.Color;
@@ -33,10 +34,7 @@ import minegame159.meteorclient.utils.render.color.SettingColor;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.enchantment.Enchantment;
 import net.minecraft.enchantment.EnchantmentHelper;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.ItemEntity;
-import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.*;
 import net.minecraft.entity.decoration.ItemFrameEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
@@ -140,6 +138,13 @@ public class Nametags extends Module {
             .build()
     );
 
+    private final Setting<Boolean> displayMeteor = sgPlayers.add(new BoolSetting.Builder()
+            .name("meteor")
+            .description("Shows if the player is using Meteor.")
+            .defaultValue(true)
+            .build()
+    );
+
     private final Setting<Boolean> displayGameMode = sgPlayers.add(new BoolSetting.Builder()
             .name("gamemode")
             .description("Shows the player's GameMode.")
@@ -165,6 +170,13 @@ public class Nametags extends Module {
             .name("normal-color")
             .description("The color of people not in your Friends List.")
             .defaultValue(new SettingColor(255, 255, 255))
+            .build()
+    );
+
+    private final Setting<SettingColor> meteorColor = sgPlayers.add(new ColorSetting.Builder()
+            .name("meteor-color")
+            .description("The color of M when the player is using Meteor.")
+            .defaultValue(new SettingColor(135, 0, 255))
             .build()
     );
 
@@ -277,7 +289,7 @@ public class Nametags extends Module {
     private final Map<Enchantment, Integer> enchantmentsToShowScale = new HashMap<>();
 
     public Nametags() {
-        super(Category.Render, "nametags", "Displays customizable nametags above players.");
+        super(Categories.Render, "nametags", "Displays customizable nametags above players.");
     }
 
     @EventHandler
@@ -285,33 +297,23 @@ public class Nametags extends Module {
         boolean notFreecamActive = !Modules.get().isActive(Freecam.class);
 
         for (Entity entity : mc.world.getEntities()) {
-            if (!entities.get().containsKey(entity.getType())) {
-                continue;
-            }
+            if (!entities.get().containsKey(entity.getType())) continue;
             EntityType<?> type = entity.getType();
 
             if (type == EntityType.PLAYER) {
-                if (notFreecamActive && entity == mc.cameraEntity) {
-                    continue;
-                }
-                if (!yourself.get() && entity == mc.player) {
-                    continue;
-                }
+                if (notFreecamActive && entity == mc.cameraEntity) continue;
+                if (!yourself.get() && entity == mc.player) continue;
             }
 
             pos.set(entity, event.tickDelta);
             pos.add(0, getHeight(entity), 0);
 
             if (NametagUtils.to2D(pos, scale.get())) {
-                if (type == EntityType.PLAYER) {
-                    renderNametagPlayer((PlayerEntity) entity);
-                } else if (type == EntityType.ITEM) {
-                    renderNametagItem(((ItemEntity) entity).getStack());
-                } else if (type == EntityType.ITEM_FRAME) {
-                    renderNametagItem(((ItemFrameEntity) entity).getHeldItemStack());
-                } else if (entity instanceof LivingEntity) {
-                    renderGenericNametag((LivingEntity) entity);
-                }
+                if (type == EntityType.PLAYER) renderNametagPlayer((PlayerEntity) entity);
+                else if (type == EntityType.ITEM) renderNametagItem(((ItemEntity) entity).getStack());
+                else if (type == EntityType.ITEM_FRAME) renderNametagItem(((ItemFrameEntity) entity).getHeldItemStack());
+                else if (type == EntityType.TNT) renderTntNametag((TntEntity) entity);
+                else if (entity instanceof LivingEntity) renderGenericNametag((LivingEntity) entity);
             }
         }
     }
@@ -319,36 +321,29 @@ public class Nametags extends Module {
     private double getHeight(Entity entity) {
         double height = entity.getEyeHeight(entity.getPose());
 
-        if (entity.getType() == EntityType.ITEM || entity.getType() == EntityType.ITEM_FRAME) {
-            height += 0.2;
-        } else {
-            height += 0.5;
-        }
+        if (entity.getType() == EntityType.ITEM || entity.getType() == EntityType.ITEM_FRAME) height += 0.2;
+        else height += 0.5;
 
         return height;
     }
 
-    private void renderNametagPlayer(PlayerEntity entity) {
+    private void renderNametagPlayer(PlayerEntity player) {
         TextRenderer text = TextRenderer.get();
         NametagUtils.begin(pos);
 
+        // Using Meteor
+        String usingMeteor = "";
+        if (displayMeteor.get() && MeteorPlayers.get(player)) usingMeteor = "M ";
+
         // Gamemode
-        GameMode gm = EntityUtils.getGameMode(entity);
+        GameMode gm = EntityUtils.getGameMode(player);
         String gmText = "ERR";
         if (gm != null) {
             switch (gm) {
-                case SPECTATOR:
-                    gmText = "Sp";
-                    break;
-                case SURVIVAL:
-                    gmText = "S";
-                    break;
-                case CREATIVE:
-                    gmText = "C";
-                    break;
-                case ADVENTURE:
-                    gmText = "A";
-                    break;
+                case SPECTATOR: gmText = "Sp"; break;
+                case SURVIVAL:  gmText = "S"; break;
+                case CREATIVE:  gmText = "C"; break;
+                case ADVENTURE: gmText = "A"; break;
             }
         }
 
@@ -356,44 +351,38 @@ public class Nametags extends Module {
 
         // Name
         String name;
-        Color nameColor = Friends.get().getFriendColor(entity);
+        Color nameColor = Friends.get().getFriendColor(player);
 
-        if (entity == mc.player) {
-            name = Modules.get().get(NameProtect.class).getName(entity.getGameProfile().getName());
-        } else {
-            name = entity.getGameProfile().getName();
-        }
+        if (player == mc.player) name = Modules.get().get(NameProtect.class).getName(player.getGameProfile().getName());
+        else name = player.getGameProfile().getName();
 
-        if (Modules.get().get(FakePlayer.class).showID(entity)) {
-            name += " [" + FakePlayerUtils.getID((FakePlayerEntity) entity) + "]";
+        if (Modules.get().get(FakePlayer.class).showID(player)) {
+            name += " [" + FakePlayerUtils.getID((FakePlayerEntity) player) + "]";
         }
         name = name + " ";
 
         // Health
-        float absorption = entity.getAbsorptionAmount();
-        int health = Math.round(entity.getHealth() + absorption);
-        double healthPercentage = health / (entity.getMaxHealth() + absorption);
+        float absorption = player.getAbsorptionAmount();
+        int health = Math.round(player.getHealth() + absorption);
+        double healthPercentage = health / (player.getMaxHealth() + absorption);
 
         String healthText = String.valueOf(health);
         Color healthColor;
 
-        if (healthPercentage <= 0.333) {
-            healthColor = healthStage3.get();
-        } else if (healthPercentage <= 0.666) {
-            healthColor = healthStage2.get();
-        } else {
-            healthColor = healthStage1.get();
-        }
+        if (healthPercentage <= 0.333) healthColor = healthStage3.get();
+        else if (healthPercentage <= 0.666) healthColor = healthStage2.get();
+        else healthColor = healthStage1.get();
 
         // Ping
-        int ping = EntityUtils.getPing(entity);
+        int ping = EntityUtils.getPing(player);
         String pingText = " [" + ping + "ms]";
 
         // Distance
-        double dist = Math.round(Utils.distanceToCamera(entity) * 10.0) / 10.0;
+        double dist = Math.round(Utils.distanceToCamera(player) * 10.0) / 10.0;
         String distText = " " + dist + "m";
 
         // Calc widths
+        double usingMeteorWidth = text.getWidth(usingMeteor);
         double gmWidth = text.getWidth(gmText);
         double nameWidth = text.getWidth(name);
         double healthWidth = text.getWidth(healthText);
@@ -401,15 +390,10 @@ public class Nametags extends Module {
         double distWidth = text.getWidth(distText);
         double width = nameWidth + healthWidth;
 
-        if (displayGameMode.get()) {
-            width += gmWidth;
-        }
-        if (displayPing.get()) {
-            width += pingWidth;
-        }
-        if (displayDistance.get()) {
-            width += distWidth;
-        }
+        if (displayMeteor.get()) width += usingMeteorWidth;
+        if (displayGameMode.get()) width += gmWidth;
+        if (displayPing.get()) width += pingWidth;
+        if (displayDistance.get()) width += distWidth;
 
         double widthHalf = width / 2;
         double heightDown = text.getHeight();
@@ -421,18 +405,14 @@ public class Nametags extends Module {
         double hX = -widthHalf;
         double hY = -heightDown;
 
-        if (displayGameMode.get()) {
-            hX = text.render(gmText, hX, hY, gmColor.get());
-        }
+        if (displayMeteor.get()) hX = text.render(usingMeteor, hX, hY, meteorColor.get());
+
+        if (displayGameMode.get()) hX = text.render(gmText, hX, hY, gmColor.get());
         hX = text.render(name, hX, hY, nameColor != null ? nameColor : normalName.get());
 
         hX = text.render(healthText, hX, hY, healthColor);
-        if (displayPing.get()) {
-            hX = text.render(pingText, hX, hY, pingColor.get());
-        }
-        if (displayDistance.get()) {
-            text.render(distText, hX, hY, distanceColor.get());
-        }
+        if (displayPing.get()) hX = text.render(pingText, hX, hY, pingColor.get());
+        if (displayDistance.get()) text.render(distText, hX, hY, distanceColor.get());
         text.end();
 
         if (displayItems.get()) {
@@ -440,21 +420,14 @@ public class Nametags extends Module {
             Arrays.fill(itemWidths, 0);
             boolean hasItems = false;
             int maxEnchantCount = 0;
-            if (!displayItems.get()) {
-                displayItemEnchants.set(false);
-            }
 
             for (int i = 0; i < 6; i++) {
-                ItemStack itemStack = getItem(entity, i);
+                ItemStack itemStack = getItem(player, i);
 
-                if (itemStack.isEmpty()) {
-                    continue;
-                }
+                // Setting up widths
+                if (itemWidths[i] == 0) itemWidths[i] = 32;
 
-                hasItems = true;
-                if (itemWidths[i] == 0) {
-                    itemWidths[i] = 32;
-                }
+                if (!itemStack.isEmpty()) hasItems = true;
 
                 if (displayItemEnchants.get()) {
                     Map<Enchantment, Integer> enchantments = EnchantmentHelper.get(itemStack);
@@ -477,9 +450,7 @@ public class Nametags extends Module {
 
             double itemsHeight = (hasItems ? 32 : 0);
             double itemWidthTotal = 0;
-            for (double w : itemWidths) {
-                itemWidthTotal += w;
-            }
+            for (double w : itemWidths) itemWidthTotal += w;
             double itemWidthHalf = itemWidthTotal / 2;
 
             double y = -heightDown - 7 - itemsHeight;
@@ -487,72 +458,60 @@ public class Nametags extends Module {
 
             //Rendering items and enchants
             for (int i = 0; i < 6; i++) {
-                ItemStack stack = getItem(entity, i);
+                ItemStack stack = getItem(player, i);
 
-                if (!stack.isEmpty()) {
-                    glPushMatrix();
-                    glScaled(2.5, 2.5, 1);
+                glPushMatrix();
+                glScaled(2, 2, 1);
 
-                    mc.getItemRenderer().renderGuiItemIcon(stack, (int) (x / 2.5), (int) (y / 2.5));
-                    mc.getItemRenderer().renderGuiItemOverlay(mc.textRenderer, stack, (int) (x / 2.5), (int) (y / 2.5));
+                mc.getItemRenderer().renderGuiItemIcon(stack, (int) (x / 2), (int) (y / 2));
+                mc.getItemRenderer().renderGuiItemOverlay(mc.textRenderer, stack, (int) (x / 2), (int) (y / 2));
 
-                    glPopMatrix();
+                glPopMatrix();
 
-                    if (maxEnchantCount > 0 && displayItemEnchants.get()) {
-                        text.begin(0.5 * enchantTextScale.get(), false, true);
+                if (maxEnchantCount > 0 && displayItemEnchants.get()) {
+                    text.begin(0.5 * enchantTextScale.get(), false, true);
 
-                        Map<Enchantment, Integer> enchantments = EnchantmentHelper.get(stack);
-                        Map<Enchantment, Integer> enchantmentsToShow = new HashMap<>();
-                        for (Enchantment enchantment : displayedEnchantments.get()) {
-                            if (enchantments.containsKey(enchantment)) {
-                                enchantmentsToShow.put(enchantment, enchantments.get(enchantment));
-                            }
+                    Map<Enchantment, Integer> enchantments = EnchantmentHelper.get(stack);
+                    Map<Enchantment, Integer> enchantmentsToShow = new HashMap<>();
+                    for (Enchantment enchantment : displayedEnchantments.get()) {
+                        if (enchantments.containsKey(enchantment)) {
+                            enchantmentsToShow.put(enchantment, enchantments.get(enchantment));
                         }
-
-                        double aW = itemWidths[i];
-                        double enchantY = 0;
-
-                        double addY = 0;
-                        switch (enchantPos.get()) {
-                            case Above:
-                                addY = -((enchantmentsToShow.size() + 1) * text.getHeight());
-                                break;
-                            case OnTop:
-                                addY = (itemsHeight - enchantmentsToShow.size() * text.getHeight()) / 2;
-                                break;
-                        }
-
-                        double enchantX = x;
-
-                        for (Enchantment enchantment : enchantmentsToShow.keySet()) {
-                            String enchantName = Utils.getEnchantSimpleName(enchantment, enchantLength.get()) + " " + enchantmentsToShow.get(enchantment);
-
-                            Color enchantColor = enchantmentTextColor.get();
-                            if (enchantment.isCursed()) {
-                                enchantColor = RED;
-                            }
-
-                            switch (enchantPos.get()) {
-                                case Above:
-                                    enchantX = x + (aW / 2) - (text.getWidth(enchantName) / 2);
-                                    break;
-                                case OnTop:
-                                    enchantX = x + (aW - text.getWidth(enchantName)) / 2;
-                                    break;
-                            }
-
-                            text.render(enchantName, enchantX, y + addY + enchantY, enchantColor);
-
-                            enchantY += text.getHeight();
-                        }
-
-                        text.end();
                     }
+
+                    double aW = itemWidths[i];
+                    double enchantY = 0;
+
+                    double addY = 0;
+                    switch (enchantPos.get()) {
+                        case Above: addY = -((enchantmentsToShow.size() + 1) * text.getHeight()); break;
+                        case OnTop: addY = (itemsHeight - enchantmentsToShow.size() * text.getHeight()) / 2; break;
+                    }
+
+                    double enchantX = x;
+
+                    for (Enchantment enchantment : enchantmentsToShow.keySet()) {
+                        String enchantName = Utils.getEnchantSimpleName(enchantment, enchantLength.get()) + " " + enchantmentsToShow.get(enchantment);
+
+                        Color enchantColor = enchantmentTextColor.get();
+                        if (enchantment.isCursed()) enchantColor = RED;
+
+                        switch (enchantPos.get()) {
+                            case Above: enchantX = x + (aW / 2) - (text.getWidth(enchantName) / 2); break;
+                            case OnTop: enchantX = x + (aW - text.getWidth(enchantName)) / 2; break;
+                        }
+
+                        text.render(enchantName, enchantX, y + addY + enchantY, enchantColor);
+
+                        enchantY += text.getHeight();
+                    }
+
+                    text.end();
                 }
 
                 x += itemWidths[i];
             }
-        }
+        } else if (displayItemEnchants.get()) displayItemEnchants.set(false);
 
         NametagUtils.end();
     }
@@ -569,9 +528,7 @@ public class Nametags extends Module {
         double heightDown = text.getHeight();
 
         double width = nameWidth;
-        if (itemCount.get()) {
-            width += countWidth;
-        }
+        if (itemCount.get()) width += countWidth;
         double widthHalf = width / 2;
 
         drawBg(-widthHalf, -heightDown, width, heightDown);
@@ -581,9 +538,7 @@ public class Nametags extends Module {
         double hY = -heightDown;
 
         hX = text.render(name, hX, hY, itemNameColor.get());
-        if (itemCount.get()) {
-            text.render(count, hX, hY, itemCountColor.get());
-        }
+        if (itemCount.get()) text.render(count, hX, hY, itemCountColor.get());
         text.end();
 
         NametagUtils.end();
@@ -605,13 +560,9 @@ public class Nametags extends Module {
         String healthText = String.valueOf(health);
         Color healthColor;
 
-        if (healthPercentage <= 0.333) {
-            healthColor = otherHealthStage3.get();
-        } else if (healthPercentage <= 0.666) {
-            healthColor = otherHealthStage2.get();
-        } else {
-            healthColor = otherHealthStage1.get();
-        }
+        if (healthPercentage <= 0.333) healthColor = otherHealthStage3.get();
+        else if (healthPercentage <= 0.666) healthColor = otherHealthStage2.get();
+        else healthColor = otherHealthStage1.get();
 
         double nameWidth = text.getWidth(nameText);
         double healthWidth = text.getWidth(healthText);
@@ -633,7 +584,30 @@ public class Nametags extends Module {
         NametagUtils.end();
     }
 
-    private List<Enchantment> setDefualtList() {
+    private void renderTntNametag(TntEntity entity) {
+        TextRenderer text = TextRenderer.get();
+        NametagUtils.begin(pos);
+
+        String fuseText = ticksToTime(entity.getFuseTimer());
+
+        double width = text.getWidth(fuseText);
+        double heightDown = text.getHeight();
+
+        double widthHalf = width / 2;
+
+        drawBg(-widthHalf, -heightDown, width, heightDown);
+
+        text.beginBig();
+        double hX = -widthHalf;
+        double hY = -heightDown;
+
+        text.render(fuseText, hX, hY, otherNameColor.get());
+        text.end();
+
+        NametagUtils.end();
+    }
+
+    private List<Enchantment> setDefualtList(){
         List<Enchantment> ench = new ArrayList<>();
         for (Enchantment enchantment : Registry.ENCHANTMENT) {
             ench.add(enchantment);
@@ -643,18 +617,12 @@ public class Nametags extends Module {
 
     private ItemStack getItem(PlayerEntity entity, int index) {
         switch (index) {
-            case 0:
-                return entity.getMainHandStack();
-            case 1:
-                return entity.inventory.armor.get(3);
-            case 2:
-                return entity.inventory.armor.get(2);
-            case 3:
-                return entity.inventory.armor.get(1);
-            case 4:
-                return entity.inventory.armor.get(0);
-            case 5:
-                return entity.getOffHandStack();
+            case 0: return entity.getMainHandStack();
+            case 1: return entity.inventory.armor.get(3);
+            case 2: return entity.inventory.armor.get(2);
+            case 3: return entity.inventory.armor.get(1);
+            case 4: return entity.inventory.armor.get(0);
+            case 5: return entity.getOffHandStack();
         }
         return ItemStack.EMPTY;
     }
@@ -663,5 +631,19 @@ public class Nametags extends Module {
         Renderer.NORMAL.begin(null, DrawMode.Triangles, VertexFormats.POSITION_COLOR);
         Renderer.NORMAL.quad(x - 1, y - 1, width + 2, height + 2, background.get());
         Renderer.NORMAL.end();
+    }
+
+    private static String ticksToTime(int ticks){
+        if(ticks > 20*3600){
+            int h = ticks/20/3600;
+            return h+" h";
+        } else if(ticks > 20*60){
+            int m = ticks/20/60;
+            return m+" m";
+        } else {
+            int s = ticks / 20;
+            int ms = (ticks % 20) / 2;
+            return s+"."+ms+" s";
+        }
     }
 }

@@ -13,16 +13,19 @@ import minegame159.meteorclient.events.meteor.ClientInitialisedEvent;
 import minegame159.meteorclient.events.meteor.KeyEvent;
 import minegame159.meteorclient.events.world.TickEvent;
 import minegame159.meteorclient.gui.WidgetScreen;
+import minegame159.meteorclient.gui.screens.topbar.TopBarHud;
 import minegame159.meteorclient.gui.screens.topbar.TopBarModules;
+import minegame159.meteorclient.modules.Categories;
 import minegame159.meteorclient.modules.Modules;
 import minegame159.meteorclient.modules.misc.DiscordPresence;
-import minegame159.meteorclient.modules.render.hud.HudEditorScreen;
 import minegame159.meteorclient.rendering.Fonts;
 import minegame159.meteorclient.rendering.Matrices;
 import minegame159.meteorclient.rendering.text.CustomTextRenderer;
 import minegame159.meteorclient.systems.Systems;
 import minegame159.meteorclient.utils.Utils;
 import minegame159.meteorclient.utils.entity.EntityUtils;
+import minegame159.meteorclient.utils.misc.FakeClientPlayer;
+import minegame159.meteorclient.utils.misc.MeteorPlayers;
 import minegame159.meteorclient.utils.misc.Names;
 import minegame159.meteorclient.utils.misc.input.KeyAction;
 import minegame159.meteorclient.utils.misc.input.KeyBinds;
@@ -36,6 +39,7 @@ import minegame159.meteorclient.utils.world.BlockIterator;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.loader.api.FabricLoader;
+import net.fabricmc.loader.api.entrypoint.EntrypointContainer;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.options.KeyBinding;
@@ -44,6 +48,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MeteorClient implements ClientModInitializer {
     public static MeteorClient INSTANCE;
@@ -68,6 +74,11 @@ public class MeteorClient implements ClientModInitializer {
 
         LOG.info("Initializing Meteor Client");
 
+        List<MeteorAddon> addons = new ArrayList<>();
+        for (EntrypointContainer<MeteorAddon> entrypoint : FabricLoader.getInstance().getEntrypointContainers("meteor", MeteorAddon.class)) {
+            addons.add(entrypoint.getEntrypoint());
+        }
+
         mc = MinecraftClient.getInstance();
         Utils.mc = mc;
         EntityUtils.mc = mc;
@@ -88,6 +99,14 @@ public class MeteorClient implements ClientModInitializer {
         EChestMemory.init();
         Rotations.init();
         Names.init();
+        MeteorPlayers.init();
+        FakeClientPlayer.init();
+
+        // Register categories
+        Modules.REGISTERING_CATEGORIES = true;
+        Categories.register();
+        addons.forEach(MeteorAddon::onRegisterCategories);
+        Modules.REGISTERING_CATEGORIES = false;
 
         Systems.init();
 
@@ -97,7 +116,12 @@ public class MeteorClient implements ClientModInitializer {
         }));
 
         EVENT_BUS.subscribe(this);
-        EVENT_BUS.post(new ClientInitialisedEvent());
+        EVENT_BUS.post(new ClientInitialisedEvent()); // TODO: This is there just for compatibility
+
+        // Call onInitialize for addons
+        addons.forEach(MeteorAddon::onInitialize);
+
+        Systems.load();
     }
 
     private void openClickGui() {
@@ -127,7 +151,7 @@ public class MeteorClient implements ClientModInitializer {
     private void onKey(KeyEvent event) {
         // Click GUI
         if (event.action == KeyAction.Press && event.key == KeyBindingHelper.getBoundKeyOf(KeyBinds.OPEN_CLICK_GUI).getCode()) {
-            if ((!Utils.canUpdate() && !(mc.currentScreen instanceof WidgetScreen) && !(mc.currentScreen instanceof HudEditorScreen)) || mc.currentScreen == null) openClickGui();
+            if ((!Utils.canUpdate() && !(mc.currentScreen instanceof WidgetScreen) && !(mc.currentScreen instanceof TopBarHud)) || mc.currentScreen == null) openClickGui();
         }
 
         // Shulker Peek

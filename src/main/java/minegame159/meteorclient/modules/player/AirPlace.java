@@ -8,13 +8,13 @@ package minegame159.meteorclient.modules.player;
 import meteordevelopment.orbit.EventHandler;
 import minegame159.meteorclient.events.render.RenderEvent;
 import minegame159.meteorclient.events.world.TickEvent;
-import minegame159.meteorclient.modules.Category;
+import minegame159.meteorclient.modules.Categories;
 import minegame159.meteorclient.modules.Module;
 import minegame159.meteorclient.rendering.Renderer;
 import minegame159.meteorclient.rendering.ShapeMode;
 import minegame159.meteorclient.settings.*;
-import minegame159.meteorclient.utils.player.PlayerUtils;
 import minegame159.meteorclient.utils.render.color.SettingColor;
+import minegame159.meteorclient.utils.world.BlockUtils;
 import net.minecraft.item.BlockItem;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
@@ -70,12 +70,12 @@ public class AirPlace extends Module {
     private BlockPos target;
 
     public AirPlace() {
-        super(Category.Player, "air-place", "Places a block where your crosshair is pointing at.");
+        super(Categories.Player, "air-place", "Places a block where your crosshair is pointing at.");
     }
 
     @Override
     public void onActivate() {
-        target = mc.player.getBlockPos().add(4, 2,0); //lol funni
+        target = mc.player.getBlockPos().add(4, 2, 0); //lol funni
     }
 
     @EventHandler
@@ -86,9 +86,8 @@ public class AirPlace extends Module {
 
         if (!mc.world.getBlockState(target).isAir()) return;
 
-        if (placeWhen.get() == Place.Always
-                || placeWhen.get() == Place.OnClick && (mc.options.keyUse.wasPressed() || mc.options.keyUse.isPressed())) {
-            PlayerUtils.placeBlock(target, Hand.MAIN_HAND);
+        if (placeWhen.get() == Place.Always || placeWhen.get() == Place.OnClick && (mc.options.keyUse.wasPressed() || mc.options.keyUse.isPressed())) {
+            BlockUtils.place(target, Hand.MAIN_HAND, 0, false, 0, true, true, false, false);
         }
     }
 

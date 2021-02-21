@@ -45,7 +45,17 @@ public class EntityTypeListSetting extends Setting<Object2BooleanMap<EntityType<
 
     @Override
     protected Object2BooleanMap<EntityType<?>> parseImpl(String str) {
-        return new Object2BooleanOpenHashMap<>();
+        String[] values = str.split(",");
+        Object2BooleanMap<EntityType<?>> entities = new Object2BooleanOpenHashMap<>(values.length);
+
+        try {
+            for (String value : values) {
+                EntityType<?> entity = parseId(Registry.ENTITY_TYPE, value);
+                if (entity != null) entities.put(entity, true);
+            }
+        } catch (Exception ignored) {}
+
+        return entities;
     }
 
     @Override
@@ -58,10 +68,9 @@ public class EntityTypeListSetting extends Setting<Object2BooleanMap<EntityType<
         return true;
     }
 
-    // TODO
     @Override
-    protected String generateUsage() {
-        return "(highlight)entity type (default)(pig, minecraft:zombie, etc)";
+    public Iterable<Identifier> getIdentifierSuggestions() {
+        return Registry.ENTITY_TYPE.getIds();
     }
 
     @Override
