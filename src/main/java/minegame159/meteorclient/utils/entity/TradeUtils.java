@@ -6,6 +6,7 @@ import net.minecraft.enchantment.Enchantment;
 import net.minecraft.enchantment.EnchantmentLevelEntry;
 import net.minecraft.item.*;
 import net.minecraft.util.registry.Registry;
+import net.minecraft.village.VillagerData;
 import net.minecraft.village.VillagerProfession;
 
 import java.util.ArrayList;
@@ -179,6 +180,16 @@ public class TradeUtils {
 
     private static List<ItemStack> asList(ItemStack... array) {
         return new ArrayList<ItemStack>(Arrays.asList(array));
+    }
+
+    public static String toString(VillagerData villagerData) {
+        return String.format(
+                "Type %s | Profession %s | lvl %d",
+                villagerData.getType().toString(),
+                villagerData.getProfession().toString(),
+                villagerData.getLevel()
+        );
+
     }
 
 

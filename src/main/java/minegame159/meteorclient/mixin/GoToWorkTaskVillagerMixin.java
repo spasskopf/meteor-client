@@ -46,7 +46,9 @@ public abstract class GoToWorkTaskVillagerMixin {
 
                 MeteorClient.EVENT_BUS.post(VillagerUpdateProfessionEvent.get(
                         villagerEntity,
-                        villagerEntity.getVillagerData(), newData,
+                        villagerEntity.getVillagerData(),
+                        newData
+                        ,
                         VillagerUpdateProfessionEvent.Action.GOT_JOB
                 ));
 

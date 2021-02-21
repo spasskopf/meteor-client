@@ -15,11 +15,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class LoseJobOnSiteLossTaskMixin {
 
     @Inject(method = "run", at = @At("HEAD"))
-    public void run(ServerWorld serverWorld, VillagerEntity villagerEntity, long l, CallbackInfo ci){
+    public void run(ServerWorld serverWorld, VillagerEntity villagerEntity, long l, CallbackInfo ci) {
         MeteorClient.EVENT_BUS.post(VillagerUpdateProfessionEvent.get(
                 villagerEntity,
                 villagerEntity.getVillagerData(),
-                villagerEntity.getVillagerData().withProfession(VillagerProfession.NONE),
+                villagerEntity.getVillagerData().withProfession(VillagerProfession.NONE)
+                ,
                 VillagerUpdateProfessionEvent.Action.LOST_JOB
         ));
     }

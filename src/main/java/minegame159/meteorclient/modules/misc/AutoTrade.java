@@ -204,48 +204,6 @@ public class AutoTrade extends Module {
         }
     }
 
-    //<editor-fold desc="Event Handler">
-    @EventHandler
-    public void onRender(RenderEvent event) {
-        if (tracers.get()) {
-            if (villager != null) {
-                RenderUtils.drawTracerToEntity(event,
-                        villager,
-                        tracersColor.get(),
-                        Modules.get().get(Tracers.class).target.get(),
-                        Modules.get().get(Tracers.class).stem.get());
-
-            }
-            if (workStation != null) {
-                RenderUtils.drawTracerToPos(workStation,
-                        tracersColor.get(),
-                        event);
-            }
-        }
-        if (blacklistTracers.get()) {
-            for (VillagerEntity villagerEntity : blacklistedVillagers) {
-                RenderUtils.drawTracerToEntity(event,
-                        villagerEntity,
-                        blackListTracersColor.get(),
-                        Modules.get().get(Tracers.class).target.get(),
-                        Modules.get().get(Tracers.class).stem.get());
-            }
-        }
-
-    }
-
-    @EventHandler
-    public void onTick(TickEvent.Post event) {
-        switch (state) {
-            case WAITING_FOR_VILLAGER_IN_RANGE:
-                scanForVillagerInRange();
-                break;
-            case WAITING_FOR_JOB:
-                placeWorkStation();
-                break;
-        }
-    }
-
     private void placeWorkStation() {
         if (workStation == null) {
             workStation = new BlockPos.Mutable(mc.player.getPos().getX(),
@@ -284,6 +242,84 @@ public class AutoTrade extends Module {
             } else {
                 ChatUtils.prefixError(PREFIX, "Could not place workstation!");
             }
+        }
+    }
+
+    //<editor-fold desc="Event Handler">
+    /*
+    private static final List<String> filter = new ArrayList<>(Arrays.asList(
+            "class net.minecraft.network.packet.s2c.play.EntitySetHeadYawS2CPacket",
+            "class net.minecraft.network.packet.s2c.play.EntityS2CPacket$RotateAndMoveRelative",
+            "class net.minecraft.network.packet.s2c.play.EntityVelocityUpdateS2CPacket",
+            "class net.minecraft.network.packet.s2c.play.EntityS2CPacket$RotateAndMoveRelative",
+            "class net.minecraft.network.packet.s2c.play.EntityPositionS2CPacket",
+            "class net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket$PositionOnly",
+            "class net.minecraft.network.packet.s2c.play.WorldTimeUpdateS2CPacket",
+            "class net.minecraft.network.packet.s2c.play.PlayerListS2CPacket",
+            "class net.minecraft.network.packet.s2c.play.EntityS2CPacket$MoveRelative"
+
+
+    ));
+
+
+     @EventHandler
+     public void onPacketReceived(PacketEvent.Receive event) {
+         if (event.packet instanceof EntityStatusS2CPacket) {
+             final EntityStatusS2CPacket packet = (EntityStatusS2CPacket) event.packet;
+             final Entity entity = packet.getEntity(mc.world);
+             System.out.println("is update Packet!");
+             if (entity != null) {
+                 System.out.printf("Entity Type and Pos: %s | %s | %s | Status: %d%n",
+                         entity.getType().toString(),
+                         entity.getBlockPos().toShortString(),
+                         entity instanceof VillagerEntity ? ((VillagerEntity) entity).getVillagerData().getProfession().toString() : "NaN",
+                         packet.getStatus()
+                 );
+
+             }
+
+         }
+     }
+    */
+
+    @EventHandler
+    public void onRender(RenderEvent event) {
+        if (tracers.get()) {
+            if (villager != null) {
+                RenderUtils.drawTracerToEntity(event,
+                        villager,
+                        tracersColor.get(),
+                        Modules.get().get(Tracers.class).target.get(),
+                        Modules.get().get(Tracers.class).stem.get());
+
+            }
+            if (workStation != null) {
+                RenderUtils.drawTracerToPos(workStation,
+                        tracersColor.get(),
+                        event);
+            }
+        }
+        if (blacklistTracers.get()) {
+            for (VillagerEntity villagerEntity : blacklistedVillagers) {
+                RenderUtils.drawTracerToEntity(event,
+                        villagerEntity,
+                        blackListTracersColor.get(),
+                        Modules.get().get(Tracers.class).target.get(),
+                        Modules.get().get(Tracers.class).stem.get());
+            }
+        }
+
+    }
+
+    @EventHandler
+    public void onTick(TickEvent.Post event) {
+        switch (state) {
+            case WAITING_FOR_VILLAGER_IN_RANGE:
+                scanForVillagerInRange();
+                break;
+            case WAITING_FOR_JOB:
+                placeWorkStation();
+                break;
         }
     }
 

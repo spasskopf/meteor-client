@@ -105,6 +105,7 @@
     "TextHandlerAccessor",
     "TextVisitFactoryMixin",
     "TitleScreenMixin",
+    "TrackedDataHandlerRegistry_VILLAGER_DATA_Mixin",
     "TridentItemMixin",
     "Vec3dMixin",
     "WorldRendererAccessor",
