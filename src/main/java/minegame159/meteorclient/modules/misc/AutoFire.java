@@ -25,6 +25,8 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.registry.Registry;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 public class AutoFire extends Module {
     private static final StatusEffect FIRE_RESISTANCE = Registry.STATUS_EFFECT.get(new Identifier("fire_resistance"));
 
@@ -32,7 +34,8 @@ public class AutoFire extends Module {
         super(Category.Misc, "auto-fire", "Automatically extinguishes fire around you");
     }
 
-    private final SettingGroup sgGeneral = settings.getDefaultGroup();
+    private final SettingGroup sgGeneral = settings.createGroup("Extinguish Fire around you");
+    private final SettingGroup sgBucket = settings.createGroup("Extinguish yourself");
 
     private final Setting<Boolean> extinguish = sgGeneral.add(new BoolSetting.Builder()
             .name("extinguish")
@@ -57,19 +60,27 @@ public class AutoFire extends Module {
             .sliderMax(6)
             .build()
     );
-    private final Setting<Boolean> waterBucket = sgGeneral.add(new BoolSetting.Builder()
+    private final Setting<Integer> maxBlockPerTick = sgGeneral.add(new IntSetting.Builder()
+            .name("block-per-tick")
+            .description("Maximum amount of Blocks to extinguish per tick.")
+            .defaultValue(5)
+            .min(1)
+            .sliderMax(50)
+            .build()
+    );
+    private final Setting<Boolean> waterBucket = sgBucket.add(new BoolSetting.Builder()
             .name("water")
             .description("Automatically places water when you are on fire (and don't have fire resistance).")
             .defaultValue(false)
             .build()
     );
-    private final Setting<Boolean> center = sgGeneral.add(new BoolSetting.Builder()
+    private final Setting<Boolean> center = sgBucket.add(new BoolSetting.Builder()
             .name("center")
             .description("Automatically centers you when placing water.")
             .defaultValue(false)
             .build()
     );
-    private final Setting<Boolean> onGround = sgGeneral.add(new BoolSetting.Builder()
+    private final Setting<Boolean> onGround = sgBucket.add(new BoolSetting.Builder()
             .name("on-ground")
             .description("Only place when you are on ground.")
             .defaultValue(false)
@@ -110,13 +121,13 @@ public class AutoFire extends Module {
             } else if (!mc.player.hasStatusEffect(FIRE_RESISTANCE) && mc.player.isOnFire()) {
                 blockPos = mc.player.getBlockPos();
                 final int slot = findSlot(Items.WATER_BUCKET);
-                if (mc.world.getBlockState(blockPos).getBlock() == Blocks.FIRE) {
+                if (mc.world.getBlockState(blockPos).getBlock() == Blocks.FIRE || mc.world.getBlockState(blockPos).getBlock() == Blocks.SOUL_FIRE) {
                     float yaw = mc.gameRenderer.getCamera().getYaw() % 360;
                     float pitch = mc.gameRenderer.getCamera().getPitch() % 360;
                     if (center.get()) {
                         PlayerUtils.centerPlayer();
                     }
-                    RotationUtils.packetRotate(90, 90);
+                    RotationUtils.packetRotate(yaw, 90);
                     mc.getNetworkHandler().sendPacket(new PlayerActionC2SPacket(PlayerActionC2SPacket.Action.START_DESTROY_BLOCK, blockPos, Direction.UP));
                     mc.player.swingHand(Hand.MAIN_HAND);
                     mc.getNetworkHandler().sendPacket(new PlayerActionC2SPacket(PlayerActionC2SPacket.Action.STOP_DESTROY_BLOCK, blockPos, Direction.UP));
@@ -129,9 +140,13 @@ public class AutoFire extends Module {
         }
 
         if (extinguish.get()) {
+            AtomicInteger blocksPerTick = new AtomicInteger();
             BlockIterator.register(horizontalRadius.get(), verticalRadius.get(), (blockPos, blockState) -> {
-                if (blockState.getBlock() == Blocks.FIRE) {
-                    extinguishFire(blockPos);
+                if (blocksPerTick.get() <= maxBlockPerTick.get()) {
+                    if (blockState.getBlock() == Blocks.FIRE || mc.world.getBlockState(blockPos).getBlock() == Blocks.SOUL_FIRE) {
+                        extinguishFire(blockPos);
+                        blocksPerTick.getAndIncrement();
+                    }
                 }
             });
         }
@@ -147,10 +162,9 @@ public class AutoFire extends Module {
             float yaw = mc.gameRenderer.getCamera().getYaw() % 360;
             float pitch = mc.gameRenderer.getCamera().getPitch() % 360;
 
-            RotationUtils.packetRotate(90, 90);
+            RotationUtils.packetRotate(yaw, 90);
             mc.interactionManager.interactItem(mc.player, mc.player.world, Hand.MAIN_HAND);
             InvUtils.swap(preSlot);
-
             RotationUtils.packetRotate(yaw, pitch);
 
         }
