@@ -2,7 +2,7 @@ package minegame159.meteorclient.modules.misc;
 
 import meteordevelopment.orbit.EventHandler;
 import minegame159.meteorclient.events.world.TickEvent;
-import minegame159.meteorclient.modules.Category;
+import minegame159.meteorclient.modules.Categories;
 import minegame159.meteorclient.modules.Module;
 import minegame159.meteorclient.settings.BoolSetting;
 import minegame159.meteorclient.settings.IntSetting;
@@ -31,7 +31,7 @@ public class AutoFire extends Module {
     private static final StatusEffect FIRE_RESISTANCE = Registry.STATUS_EFFECT.get(new Identifier("fire_resistance"));
 
     public AutoFire() {
-        super(Category.Misc, "auto-fire", "Automatically extinguishes fire around you");
+        super(Categories.Misc, "auto-fire", "Automatically extinguishes fire around you");
     }
 
     private final SettingGroup sgGeneral = settings.createGroup("Extinguish Fire around you");

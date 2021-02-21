@@ -49,10 +49,6 @@ public class TradeListSetting extends Setting<List<String>> {
         return true;
     }
 
-    @Override
-    protected String generateUsage() {
-        return "(highlight)items from lvl one trades (default)(emerald, arrows, books, etc)";
-    }
 
     @Override
     public CompoundTag toTag() {

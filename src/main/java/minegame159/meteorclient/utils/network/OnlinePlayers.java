@@ -12,6 +12,10 @@ public class OnlinePlayers {
     private static long lastPingTime;
 
     public static void update() {
+        if (Config.get().dontSendAnyData) {
+            return;
+        }
+
         long time = System.currentTimeMillis();
 
         if (time - lastPingTime > 5 * 60 * 1000) {
@@ -29,10 +33,18 @@ public class OnlinePlayers {
     }
 
     public static void forcePing() {
+        if (Config.get().dontSendAnyData) {
+            return;
+        }
+
         lastPingTime = 0;
     }
 
     public static void leave() {
+        if (Config.get().dontSendAnyData) {
+            return;
+        }
+
         MeteorExecutor.execute(() -> HttpUtils.post("http://meteorclient.com/api/online/leave"));
     }
 }

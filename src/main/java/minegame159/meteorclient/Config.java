@@ -29,6 +29,8 @@ public class Config extends System<Config> {
 
     public int rotationHoldTicks = 9;
 
+    public boolean dontSendAnyData = true;
+
     public Config() {
         super("config");
 
@@ -59,6 +61,7 @@ public class Config extends System<Config> {
         tag.putBoolean("chatCommandsInfo", chatCommandsInfo);
         tag.putBoolean("deleteChatCommandsInfo", deleteChatCommandsInfo);
         tag.putBoolean("sendDataToApi", sendDataToApi);
+        tag.putBoolean("dontSendAnyData", dontSendAnyData);
 
         return tag;
     }
@@ -71,6 +74,7 @@ public class Config extends System<Config> {
         chatCommandsInfo = !tag.contains("chatCommandsInfo") || tag.getBoolean("chatCommandsInfo");
         deleteChatCommandsInfo = !tag.contains("deleteChatCommandsInfo") || tag.getBoolean("deleteChatCommandsInfo");
         sendDataToApi = !tag.contains("sendDataToApi") || tag.getBoolean("sendDataToApi");
+        dontSendAnyData = !tag.contains("dontSendAnyData") || tag.getBoolean("dontSendAnyData");
 
         // In 0.2.9 the default font was changed, detect when people load up 0.2.9 for the first time
         Version lastVer = new Version(tag.getString("version"));

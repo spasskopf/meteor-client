@@ -71,6 +71,18 @@ public class TopBarConfig extends TopBarWindowScreen {
                 .build()
         );
 
+        sgGeneral.add(new BoolSetting.Builder()
+                .name("dont-send-any-data-to-api")
+                .description("If checked, no data will be sent to Meteor Servers")
+                .defaultValue(true)
+                .onChanged(aBoolean -> {
+                    Config.get().dontSendAnyData = aBoolean;
+                    OnlinePlayers.forcePing();
+                })
+                .onModuleActivated(booleanSetting -> booleanSetting.set(Config.get().dontSendAnyData))
+                .build()
+        );
+
         sgGeneral.add(new IntSetting.Builder()
                 .name("rotation-hold-ticks")
                 .description("Hold long to hold server side rotation when not sending any packets.")

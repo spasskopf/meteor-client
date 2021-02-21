@@ -7,7 +7,7 @@ import minegame159.meteorclient.events.entity.player.BreakBlockEvent;
 import minegame159.meteorclient.events.game.OpenVillagerGuiScreenEvent;
 import minegame159.meteorclient.events.render.RenderEvent;
 import minegame159.meteorclient.events.world.TickEvent;
-import minegame159.meteorclient.modules.Category;
+import minegame159.meteorclient.modules.Categories;
 import minegame159.meteorclient.modules.Module;
 import minegame159.meteorclient.modules.Modules;
 import minegame159.meteorclient.modules.render.Tracers;
@@ -120,7 +120,7 @@ public class AutoTrade extends Module {
 
 
     public AutoTrade() {
-        super(Category.Misc, "auto-trade", "Automatically trades with Villagers");
+        super(Categories.Misc, "auto-trade", "Automatically trades with Villagers");
     }
 
 

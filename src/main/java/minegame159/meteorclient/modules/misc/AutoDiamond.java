@@ -2,11 +2,10 @@ package minegame159.meteorclient.modules.misc;
 
 import baritone.api.BaritoneAPI;
 import baritone.api.pathing.goals.GoalBlock;
-import baritone.command.defaults.BlacklistCommand;
 import meteordevelopment.orbit.EventHandler;
 import minegame159.meteorclient.MeteorClient;
 import minegame159.meteorclient.events.world.TickEvent;
-import minegame159.meteorclient.modules.Category;
+import minegame159.meteorclient.modules.Categories;
 import minegame159.meteorclient.modules.Module;
 import minegame159.meteorclient.settings.*;
 import minegame159.meteorclient.utils.network.MeteorExecutor;
@@ -29,7 +28,7 @@ import java.util.concurrent.TimeUnit;
 
 public class AutoDiamond extends Module {
     public AutoDiamond() {
-        super(Category.Misc, "auto-diamond", "Automatically farms diamond, which have been saved to a file");
+        super(Categories.Misc, "auto-diamond", "Automatically farms diamond, which have been saved to a file");
     }
 
     ArrayList<BlockPos> pos;
