@@ -41,9 +41,9 @@ public class Rotations {
         MeteorClient.EVENT_BUS.subscribe(Rotations.class);
     }
 
-    public static void rotate(double yaw, double pitch, int priority, Runnable callback) {
+    public static void rotate(double yaw, double pitch, int priority, boolean clientSide, Runnable callback) {
         Rotation rotation = rotationPool.get();
-        rotation.set(yaw, pitch, priority, callback);
+        rotation.set(yaw, pitch, priority, clientSide, callback);
 
         int i = 0;
         for (; i < rotations.size(); i++) {
@@ -51,6 +51,9 @@ public class Rotations {
         }
 
         rotations.add(i, rotation);
+    }
+    public static void rotate(double yaw, double pitch, int priority, Runnable callback) {
+        rotate(yaw, pitch, priority, false, callback);
     }
 
     public static void rotate(double yaw, double pitch, Runnable callback) {
@@ -61,25 +64,33 @@ public class Rotations {
         rotate(yaw, pitch, 0, null);
     }
 
+    private static void resetLastRotation() {
+        if (lastRotation != null) {
+            rotationPool.free(lastRotation);
+
+            lastRotation = null;
+            lastRotationTimer = 0;
+        }
+    }
+
     @EventHandler
     private static void onSendMovementPacketsPre(SendMovementPacketsEvent.Pre event) {
         if (mc.cameraEntity != mc.player) return;
         sentLastRotation = false;
 
         if (!rotations.isEmpty()) {
-            if (lastRotation != null) freeLastRotation();
+            resetLastRotation();
 
             Rotation rotation = rotations.get(i);
             setupMovementPacketRotation(rotation);
 
-            if (rotations.size() == 1) lastRotation = rotation;
-            else rotationPool.free(rotation);
+            if (rotations.size() > 1) rotationPool.free(rotation);
 
             i++;
         }
         else if (lastRotation != null) {
             if (lastRotationTimer >= Config.get().rotationHoldTicks) {
-                freeLastRotation();
+                resetLastRotation();
             }
             else {
                 setupMovementPacketRotation(lastRotation);
@@ -91,20 +102,16 @@ public class Rotations {
     }
 
     private static void setupMovementPacketRotation(Rotation rotation) {
+        setClientRotation(rotation);
+        setCamRotation(rotation.yaw, rotation.pitch);
+    }
+
+    private static void setClientRotation(Rotation rotation) {
         preYaw = mc.player.yaw;
         prePitch = mc.player.pitch;
 
         mc.player.yaw = (float) rotation.yaw;
         mc.player.pitch = (float) rotation.pitch;
-
-        setCamRotation(rotation.yaw, rotation.pitch);
-    }
-
-    private static void freeLastRotation() {
-        rotationPool.free(lastRotation);
-
-        lastRotation = null;
-        lastRotationTimer = 0;
     }
 
     @EventHandler
@@ -113,6 +120,8 @@ public class Rotations {
             if (mc.cameraEntity == mc.player) {
                 rotations.get(i - 1).runCallback();
 
+                if (rotations.size() == 1) lastRotation = rotations.get(i - 1);
+
                 resetPreRotation();
             }
 
@@ -120,7 +129,9 @@ public class Rotations {
                 Rotation rotation = rotations.get(i);
 
                 setCamRotation(rotation.yaw, rotation.pitch);
+                if (rotation.clientSide) setClientRotation(rotation);
                 rotation.sendPacket();
+                if (rotation.clientSide) resetPreRotation();
 
                 if (i == rotations.size() - 1) lastRotation = rotation;
                 else rotationPool.free(rotation);
@@ -202,12 +213,14 @@ public class Rotations {
     private static class Rotation {
         public double yaw, pitch;
         public int priority;
+        public boolean clientSide;
         public Runnable callback;
 
-        public void set(double yaw, double pitch, int priority, Runnable callback) {
+        public void set(double yaw, double pitch, int priority, boolean clientSide, Runnable callback) {
             this.yaw = yaw;
             this.pitch = pitch;
             this.priority = priority;
+            this.clientSide = clientSide;
             this.callback = callback;
         }
 

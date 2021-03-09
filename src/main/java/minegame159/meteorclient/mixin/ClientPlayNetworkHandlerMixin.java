@@ -39,11 +39,9 @@ import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 
 @Mixin(ClientPlayNetworkHandler.class)
 public abstract class ClientPlayNetworkHandlerMixin {
-    @Shadow
-    private MinecraftClient client;
+    @Shadow private MinecraftClient client;
 
-    @Shadow
-    private ClientWorld world;
+    @Shadow private ClientWorld world;
 
     private boolean worldNotNull;
 
@@ -65,9 +63,7 @@ public abstract class ClientPlayNetworkHandlerMixin {
     private void onSendPacketHead(Packet<?> packet, CallbackInfo info) {
         PacketEvent.Send event = MeteorClient.EVENT_BUS.post(PacketEvent.Send.get(packet));
 
-        if (event.isCancelled()) {
-            info.cancel();
-        }
+        if (event.isCancelled()) info.cancel();
     }
 
     @Inject(method = "sendPacket", at = @At("TAIL"))
@@ -99,9 +95,7 @@ public abstract class ClientPlayNetworkHandlerMixin {
     @Inject(method = "onExplosion", at = @At(value = "INVOKE", target = "Lnet/minecraft/network/NetworkThreadUtils;forceMainThread(Lnet/minecraft/network/Packet;Lnet/minecraft/network/listener/PacketListener;Lnet/minecraft/util/thread/ThreadExecutor;)V", shift = At.Shift.AFTER))
     private void onExplosionVelocity(ExplosionS2CPacket packet, CallbackInfo ci) {
         Velocity velocity = Modules.get().get(Velocity.class); //Velocity for explosions
-        if (!velocity.explosions.get()) {
-            return;
-        }
+        if (!velocity.explosions.get()) return;
 
         ((IExplosionS2CPacket) packet).setVelocityX((float) (packet.getPlayerVelocityX() * velocity.getHorizontal()));
         ((IExplosionS2CPacket) packet).setVelocityY((float) (packet.getPlayerVelocityY() * velocity.getVertical()));
