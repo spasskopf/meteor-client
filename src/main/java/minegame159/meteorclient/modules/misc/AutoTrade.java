@@ -31,6 +31,7 @@ import net.minecraft.item.BlockItem;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket;
+import net.minecraft.screen.MerchantScreenHandler;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvent;
 import net.minecraft.util.Hand;
@@ -120,7 +121,7 @@ public class AutoTrade extends Module {
 
 
     public AutoTrade() {
-        super(Categories.Misc, "auto-trade", "Automatically trades with Villagers");
+        super(Categories.Misc, "auto-trade", "Automatically trade resets");
     }
 
 
@@ -170,9 +171,6 @@ public class AutoTrade extends Module {
     }
 
     private void scanForVillagerInRange() {
-        if (villager != null || state != State.WAITING_FOR_VILLAGER_IN_RANGE) {
-            return;
-        }
 
         final Entity nearestVillager = EntityUtils.get(entity -> {
             if (!entity.isAlive()) {
@@ -246,42 +244,6 @@ public class AutoTrade extends Module {
     }
 
     //<editor-fold desc="Event Handler">
-    /*
-    private static final List<String> filter = new ArrayList<>(Arrays.asList(
-            "class net.minecraft.network.packet.s2c.play.EntitySetHeadYawS2CPacket",
-            "class net.minecraft.network.packet.s2c.play.EntityS2CPacket$RotateAndMoveRelative",
-            "class net.minecraft.network.packet.s2c.play.EntityVelocityUpdateS2CPacket",
-            "class net.minecraft.network.packet.s2c.play.EntityS2CPacket$RotateAndMoveRelative",
-            "class net.minecraft.network.packet.s2c.play.EntityPositionS2CPacket",
-            "class net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket$PositionOnly",
-            "class net.minecraft.network.packet.s2c.play.WorldTimeUpdateS2CPacket",
-            "class net.minecraft.network.packet.s2c.play.PlayerListS2CPacket",
-            "class net.minecraft.network.packet.s2c.play.EntityS2CPacket$MoveRelative"
-
-
-    ));
-
-
-     @EventHandler
-     public void onPacketReceived(PacketEvent.Receive event) {
-         if (event.packet instanceof EntityStatusS2CPacket) {
-             final EntityStatusS2CPacket packet = (EntityStatusS2CPacket) event.packet;
-             final Entity entity = packet.getEntity(mc.world);
-             System.out.println("is update Packet!");
-             if (entity != null) {
-                 System.out.printf("Entity Type and Pos: %s | %s | %s | Status: %d%n",
-                         entity.getType().toString(),
-                         entity.getBlockPos().toShortString(),
-                         entity instanceof VillagerEntity ? ((VillagerEntity) entity).getVillagerData().getProfession().toString() : "NaN",
-                         packet.getStatus()
-                 );
-
-             }
-
-         }
-     }
-    */
-
     @EventHandler
     public void onRender(RenderEvent event) {
         if (tracers.get()) {
@@ -320,6 +282,9 @@ public class AutoTrade extends Module {
             case WAITING_FOR_JOB:
                 placeWorkStation();
                 break;
+            case CHECKING_TRADE:
+                checkCurrentScreen();
+                break;
         }
     }
 
@@ -350,12 +315,30 @@ public class AutoTrade extends Module {
 
     @EventHandler
     public void onVillagerGuiOpen(OpenVillagerGuiScreenEvent event) {
+      checkCurrentScreen();
+    }
+
+    private void checkCurrentScreen() {
+        assert mc.player != null;
         if (state != State.CHECKING_TRADE) {
             return;
         }
+
+        if (!(mc.player.currentScreenHandler instanceof MerchantScreenHandler)) {
+            //Screen can't be opened on the same tick?
+
+            //ChatUtils.prefixWarning(PREFIX, "Current screen is not a MerchantScreen! Is %s", mc.player.currentScreenHandler.getClass().getSimpleName());
+            // reset();
+            return;
+        }
+        ChatUtils.prefixInfo(PREFIX, "Correct Screen opened!");
+
+        MerchantScreenHandler handler = (MerchantScreenHandler) mc.player.currentScreenHandler;
+
         ChatUtils.prefixInfo(PREFIX, "Opened Villager Gui! requesting close!");
-        mc.openScreen(null);
-        if (checkTrade(event.merchant.getOffers())) {
+        mc.player.closeHandledScreen();
+
+        if (checkTrade(handler.getRecipes())) {
             state = State.FINISHED;
             mc.player.playSound(new SoundEvent(new Identifier("minecraft:block.bell.use")), SoundCategory.MASTER, 2, 1);
             ChatUtils.prefixInfo(PREFIX, "Got correct villager trade! Disabling AutoTrade!");
@@ -365,6 +348,7 @@ public class AutoTrade extends Module {
         }
 
     }
+
 
     @EventHandler
     public void onVillagerUpdateProfession(VillagerUpdateProfessionEvent event) {

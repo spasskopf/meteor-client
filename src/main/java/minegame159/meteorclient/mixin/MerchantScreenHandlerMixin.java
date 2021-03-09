@@ -22,7 +22,13 @@ public class MerchantScreenHandlerMixin {
 
     @Inject(method = "<init>(ILnet/minecraft/entity/player/PlayerInventory;Lnet/minecraft/village/Merchant;)V", at = @At("RETURN"))
     public void onInit(int syncId, PlayerInventory playerInventory, Merchant merchant, CallbackInfo ci) {
-        MeteorClient.EVENT_BUS.post(OpenVillagerGuiScreenEvent.get(merchant, merchantInventory));
+        try {
+            MeteorClient.EVENT_BUS.post(OpenVillagerGuiScreenEvent.get(merchant,
+                    merchantInventory,
+                    (MerchantScreenHandler) ((Object) this)));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
 
