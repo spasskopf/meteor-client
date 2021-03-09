@@ -7,6 +7,7 @@ package minegame159.meteorclient.mixin;
 
 import minegame159.meteorclient.MeteorClient;
 import minegame159.meteorclient.events.entity.EntityDestroyEvent;
+import minegame159.meteorclient.events.entity.VillagerUpdateProfessionEvent;
 import minegame159.meteorclient.events.entity.player.PickItemsEvent;
 import minegame159.meteorclient.events.game.GameJoinedEvent;
 import minegame159.meteorclient.events.game.GameLeftEvent;
@@ -22,8 +23,12 @@ import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.ItemEntity;
+import net.minecraft.entity.data.DataTracker;
+import net.minecraft.entity.passive.VillagerEntity;
 import net.minecraft.network.Packet;
 import net.minecraft.network.packet.s2c.play.*;
+import net.minecraft.village.VillagerData;
+import net.minecraft.village.VillagerProfession;
 import net.minecraft.world.chunk.WorldChunk;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -34,9 +39,11 @@ import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 
 @Mixin(ClientPlayNetworkHandler.class)
 public abstract class ClientPlayNetworkHandlerMixin {
-    @Shadow private MinecraftClient client;
+    @Shadow
+    private MinecraftClient client;
 
-    @Shadow private ClientWorld world;
+    @Shadow
+    private ClientWorld world;
 
     private boolean worldNotNull;
 
@@ -58,7 +65,9 @@ public abstract class ClientPlayNetworkHandlerMixin {
     private void onSendPacketHead(Packet<?> packet, CallbackInfo info) {
         PacketEvent.Send event = MeteorClient.EVENT_BUS.post(PacketEvent.Send.get(packet));
 
-        if (event.isCancelled()) info.cancel();
+        if (event.isCancelled()) {
+            info.cancel();
+        }
     }
 
     @Inject(method = "sendPacket", at = @At("TAIL"))
@@ -108,4 +117,39 @@ public abstract class ClientPlayNetworkHandlerMixin {
             MeteorClient.EVENT_BUS.post(PickItemsEvent.get(((ItemEntity) itemEntity).getStack(), packet.getStackAmount()));
         }
     }
+
+
+    @Inject(method = "onEntityTrackerUpdate", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/data/DataTracker;writeUpdatedEntries(Ljava/util/List;)V"))
+    public void onEntityTrackerUpdate(EntityTrackerUpdateS2CPacket packet, CallbackInfo ci) {
+        final Entity entity = this.world.getEntityById(packet.id());
+        try {
+            if (entity != null && packet.getTrackedValues() != null && entity instanceof VillagerEntity) {
+                for (DataTracker.Entry<?> entry : packet.getTrackedValues()) {
+                    if (entry.get() instanceof VillagerData) {
+
+                        final VillagerData newData = new VillagerData(((VillagerData) entry.get()).getType(),
+                                ((VillagerData) entry.get()).getProfession(),
+                                ((VillagerData) entry.get()).getLevel());
+
+                        //Spawning a new Villager has same Data i think
+                        if (!((VillagerEntity) entity).getVillagerData().equals(newData)) {
+                            MeteorClient.EVENT_BUS.post(VillagerUpdateProfessionEvent.get(
+                                    (VillagerEntity) entity,
+                                    ((VillagerEntity) entity).getVillagerData(),
+                                    newData,
+                                    newData.getProfession() == VillagerProfession.NONE
+                                            ? VillagerUpdateProfessionEvent.Action.LOST_JOB
+                                            : VillagerUpdateProfessionEvent.Action.GOT_JOB
+                            ));
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("network handler tracker: oof");
+            e.printStackTrace();
+        }
+
+    }
+
 }
