@@ -69,33 +69,6 @@ public class TradeUtils {
     }
 
     public static List<ItemStack> getLeatherworker() {
-     /*
-       final HashSet<ItemStack> set = new HashSet<>();
-       for (ItemStack itemStack2 : asItemStackArray(Items.LEATHER_LEGGINGS, Items.LEATHER_CHESTPLATE)) {
-           for (int firstColor : MathUtils.random(16)) {
-               for (boolean firstBoolean : MathUtils.nextBoolean()) {
-                   for (boolean secondBoolean : MathUtils.nextBoolean()) {
-                       if (secondBoolean) {
-                           for (int secondColor : MathUtils.random(16)) {
-                               for (int thirdColor : MathUtils.random(16)) {
-                                   List<DyeItem> dyeItemList = Lists.newArrayList();
-                                   dyeItemList.add(DyeItem.byColor(DyeColor.byId(firstColor)));
-                                   if (firstBoolean) {
-                                       dyeItemList.add(DyeItem.byColor(DyeColor.byId(secondColor)));
-                                   }
-                                   if (secondBoolean) {
-                                       dyeItemList.add(DyeItem.byColor(DyeColor.byId(thirdColor)));
-                                   }
-                                   set.add(DyeableItem.blendAndSetColor(itemStack2, dyeItemList));
-                               }
-                           }
-                       }
-                   }
-               }
-           }
-       }
-        return asList(set.toArray(new ItemStack[]{}));
-     */
         //If somebody really wants all possible color combinations:
         //Use search, find flowers and dye armor.
         return asList(asItemStackArray(Items.LEATHER_LEGGINGS, Items.LEATHER_CHESTPLATE));
@@ -121,23 +94,6 @@ public class TradeUtils {
         final ArrayList<ItemStack> list = new ArrayList<>();
         list.add(asItemStack(Items.IRON_AXE));
         list.add(asItemStack(Items.IRON_SWORD));
-        /*
-           for (int level: MathUtils.random(15)) {
-               //from random generating (int i = 5 + random.nextInt(15))
-               level += 5;
-               List<EnchantmentLevelEntry> enchantmentLevelEntries = Lists.newArrayList();
-               Item item = stack.getItem();
-               int i = item.getEnchantability();
-
-
-
-               level += 1 + random.nextInt(i / 4 + 1) + random.nextInt(i / 4 + 1);
-               float f = (random.nextFloat() + random.nextFloat() - 1.0F) * 0.15F;
-
-               level = MathHelper.clamp(Math.round((float) level + (float) level * f), 1, 2147483647);
-               List<EnchantmentLevelEntry> list2 = EnchantmentHelper.getPossibleEntries(level, stack, false);
-           }
-         */
         //I just hope no one wants to have iron swords...
         //Because Random#nextFloat is a bit too much to simulate...
         return list;
@@ -179,7 +135,7 @@ public class TradeUtils {
     }
 
     private static List<ItemStack> asList(ItemStack... array) {
-        return new ArrayList<ItemStack>(Arrays.asList(array));
+        return new ArrayList<>(Arrays.asList(array));
     }
 
     public static String toString(VillagerData villagerData) {

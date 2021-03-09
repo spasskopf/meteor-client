@@ -1,10 +1,9 @@
 package minegame159.meteorclient.utils.misc;
 
 /**
- * Some Method used in the {@link net.minecraft.village.TradeOffers} class.
+ * Some Methods used in the {@link net.minecraft.village.TradeOffers} class.
  * Used by {@link minegame159.meteorclient.utils.entity.TradeUtils}
  */
-@SuppressWarnings("unused")
 public class MathUtils {
     public static int[] random(int bound) {
         return random(0, bound);
@@ -17,11 +16,6 @@ public class MathUtils {
         }
         return values;
     }
-
-    public static boolean[] nextBoolean() {
-        return new boolean[]{false, true};
-    }
-
 
     public static int[] mathHelperNextInt(int min, int max) {
         return random(min, max + 1);

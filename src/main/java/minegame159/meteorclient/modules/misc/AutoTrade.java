@@ -21,15 +21,13 @@ import minegame159.meteorclient.utils.player.Rotations;
 import minegame159.meteorclient.utils.render.RenderUtils;
 import minegame159.meteorclient.utils.render.color.SettingColor;
 import minegame159.meteorclient.utils.world.BlockUtils;
-import net.minecraft.block.BlockState;
 import net.minecraft.enchantment.Enchantment;
 import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.passive.VillagerEntity;
-import net.minecraft.item.BlockItem;
-import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
 import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket;
 import net.minecraft.screen.MerchantScreenHandler;
 import net.minecraft.sound.SoundCategory;
@@ -46,10 +44,8 @@ import java.util.List;
 import java.util.Map;
 
 public class AutoTrade extends Module {
-
     private static final String PREFIX = "AutoTrade";
 
-    //<editor-fold desc="Settings">
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
 
     private final Setting<Double> range = sgGeneral.add(new DoubleSetting.Builder()
@@ -104,10 +100,31 @@ public class AutoTrade extends Module {
     private final Setting<List<String>> trades = sgGeneral.add(new TradeListSetting.Builder()
             .name("trades")
             .description("Trades you want to get")
-            //.defaultValue(TradeUtils.TRADES_AS_STRING)
+            .build());
+
+    private final Setting<Boolean> checkPrice = sgGeneral.add(new BoolSetting.Builder()
+            .name("check-price")
+            .description("Continues until the trade is cheap.")
+            .defaultValue(true)
             .build()
     );
-    //</editor-fold>
+    private final Setting<Integer> price = sgGeneral.add(new IntSetting.Builder()
+            .name("price")
+            .description("Maximum price for the trade (in emeralds, requires price checking.")
+            .defaultValue(10)
+            .min(1)
+            .sliderMin(1)
+            .sliderMax(50)
+            .build()
+    );
+
+
+    private final Setting<Boolean> debug = sgGeneral.add(new BoolSetting.Builder()
+            .name("debug")
+            .description("Sends debug messages in chat.")
+            .defaultValue(false)
+            .build()
+    );
 
     private VillagerEntity villager;
     private State state = State.WAITING_FOR_VILLAGER_IN_RANGE;
@@ -125,7 +142,6 @@ public class AutoTrade extends Module {
     }
 
 
-    //<editor-fold desc="Activate / Deactivate">
     @Override
     public void onActivate() {
         reset();
@@ -135,7 +151,6 @@ public class AutoTrade extends Module {
     public void onDeactivate() {
         reset();
     }
-    //</editor-fold>
 
 
     /**
@@ -144,13 +159,40 @@ public class AutoTrade extends Module {
     private boolean checkTrade(TradeOfferList offers) {
         for (TradeOffer offer : offers) {
             if (trades.get().contains(TradeUtils.toString(offer.getMutableSellItem()))) {
-                ChatUtils.prefixInfo(PREFIX, "Correct Trade! %s", TradeUtils.toString(offer.getMutableSellItem()));
-                return true;
+                sendDebugMessage("Correct Trade! %s", TradeUtils.toString(offer.getMutableSellItem()));
+
+                if (checkPrice.get()) {
+                    ItemStack emeralds = null;
+
+                    if (offer.getMutableSellItem().getItem() == Items.EMERALD) {
+                        emeralds = offer.getMutableSellItem();
+                    } else if (offer.getAdjustedFirstBuyItem().getItem() == Items.EMERALD) {
+                        emeralds = offer.getAdjustedFirstBuyItem();
+                    } else if (offer.getSecondBuyItem().getItem() == Items.EMERALD) {
+                        emeralds = offer.getSecondBuyItem();
+                    }
+
+                    if (emeralds == null) {
+                        sendDebugMessage("Trade does not contain Emeralds! Cannot check price!");
+                        return true;
+                    }
+
+                    sendDebugMessage("Amount: %d Emeralds!", emeralds.getCount());
+                    return emeralds.getCount() <= price.get();
+                }
+
+
             } else {
-                ChatUtils.prefixInfo(PREFIX, "Wrong Trade! %s", TradeUtils.toString(offer.getMutableSellItem()));
+                sendDebugMessage("Wrong Trade! %s", TradeUtils.toString(offer.getMutableSellItem()));
             }
         }
         return false;
+    }
+
+    private void sendDebugMessage(String message, Object... args) {
+        if (debug.get()) {
+            ChatUtils.prefixInfo(PREFIX, message, args);
+        }
     }
 
 
@@ -164,6 +206,8 @@ public class AutoTrade extends Module {
 
     private void mineWorkStation() {
         state = State.REMOVING_WORKSTATION;
+        assert mc.getNetworkHandler() != null;
+        assert mc.player != null;
 
         mc.getNetworkHandler().sendPacket(new PlayerActionC2SPacket(PlayerActionC2SPacket.Action.START_DESTROY_BLOCK, workStation, net.minecraft.util.math.Direction.UP));
         mc.player.swingHand(Hand.MAIN_HAND);
@@ -171,11 +215,11 @@ public class AutoTrade extends Module {
     }
 
     private void scanForVillagerInRange() {
-
         final Entity nearestVillager = EntityUtils.get(entity -> {
             if (!entity.isAlive()) {
                 return false;
             }
+            assert mc.player != null;
             if (mc.player.distanceTo(entity) >= range.get()) {
                 return false;
             }
@@ -184,13 +228,14 @@ public class AutoTrade extends Module {
                 return false;
             }
             //Ah yes: redundant cast but suspicious call without the cast...
+
             if (blacklistedVillagers.contains((VillagerEntity) entity)) {
                 return false;
             }
 
             if (((VillagerEntity) entity).getVillagerData().getProfession() != VillagerProfession.NONE && ((VillagerEntity) entity).getVillagerData().getProfession() != targetProfession.get().getProfession()) {
                 blacklistedVillagers.add((VillagerEntity) entity);
-                ChatUtils.prefixInfo(PREFIX, "Added Villager at %s to Blacklist", entity.getBlockPos().toShortString());
+                sendDebugMessage("Added Villager at %s to Blacklist", entity.getBlockPos().toShortString());
                 return false;
             }
             return !((VillagerEntity) entity).isBaby();
@@ -203,6 +248,7 @@ public class AutoTrade extends Module {
     }
 
     private void placeWorkStation() {
+        assert mc.player != null;
         if (workStation == null) {
             workStation = new BlockPos.Mutable(mc.player.getPos().getX(),
                     mc.player.getPos().getY(),
@@ -219,22 +265,22 @@ public class AutoTrade extends Module {
                     mc.player.getPos().getZ());
             //Try to place the block in every direction, beginning with the block in front of the player
             if (BlockUtils.place(workStation, Hand.MAIN_HAND, slot, true, 50, true)) {
-                ChatUtils.prefixInfo(PREFIX, "Placed workstation at %s", workStation.toShortString());
+                sendDebugMessage("Placed workstation at %s", workStation.toShortString());
                 state = State.WAITING_FOR_JOB;
             } else if (BlockUtils.place(center.north(), Hand.MAIN_HAND, slot, true, 50, true)) {
-                ChatUtils.prefixInfo(PREFIX, "Placed workstation at %s", center.north().toShortString());
+                sendDebugMessage("Placed workstation at %s", center.north().toShortString());
                 workStation = center.north();
                 state = State.WAITING_FOR_JOB;
             } else if (BlockUtils.place(center.east(), Hand.MAIN_HAND, slot, true, 50, true)) {
-                ChatUtils.prefixInfo(PREFIX, "Placed workstation at %s", center.east().toShortString());
+                sendDebugMessage("Placed workstation at %s", center.east().toShortString());
                 workStation = center.east();
                 state = State.WAITING_FOR_JOB;
             } else if (BlockUtils.place(center.south(), Hand.MAIN_HAND, slot, true, 50, true)) {
-                ChatUtils.prefixInfo(PREFIX, "Placed workstation at %s", center.south().toShortString());
+                sendDebugMessage("Placed workstation at %s", center.south().toShortString());
                 workStation = center.south();
                 state = State.WAITING_FOR_JOB;
             } else if (BlockUtils.place(center.west(), Hand.MAIN_HAND, slot, true, 50, true)) {
-                ChatUtils.prefixInfo(PREFIX, "Placed workstation at %s", center.west().toShortString());
+                sendDebugMessage("Placed workstation at %s", center.west().toShortString());
                 workStation = center.west();
                 state = State.WAITING_FOR_JOB;
             } else {
@@ -243,7 +289,6 @@ public class AutoTrade extends Module {
         }
     }
 
-    //<editor-fold desc="Event Handler">
     @EventHandler
     public void onRender(RenderEvent event) {
         if (tracers.get()) {
@@ -299,7 +344,7 @@ public class AutoTrade extends Module {
 
         if (event.blockPos.equals(workStation)) {
             reset();
-            ChatUtils.prefixInfo(PREFIX, "Mined workstation");
+            sendDebugMessage("Mined workstation");
         }
     }
 
@@ -315,7 +360,7 @@ public class AutoTrade extends Module {
 
     @EventHandler
     public void onVillagerGuiOpen(OpenVillagerGuiScreenEvent event) {
-      checkCurrentScreen();
+        checkCurrentScreen();
     }
 
     private void checkCurrentScreen() {
@@ -326,16 +371,13 @@ public class AutoTrade extends Module {
 
         if (!(mc.player.currentScreenHandler instanceof MerchantScreenHandler)) {
             //Screen can't be opened on the same tick?
-
-            //ChatUtils.prefixWarning(PREFIX, "Current screen is not a MerchantScreen! Is %s", mc.player.currentScreenHandler.getClass().getSimpleName());
-            // reset();
             return;
         }
-        ChatUtils.prefixInfo(PREFIX, "Correct Screen opened!");
+        sendDebugMessage("Correct Screen opened!");
 
         MerchantScreenHandler handler = (MerchantScreenHandler) mc.player.currentScreenHandler;
 
-        ChatUtils.prefixInfo(PREFIX, "Opened Villager Gui! requesting close!");
+        sendDebugMessage("Opened Villager Gui! requesting close!");
         mc.player.closeHandledScreen();
 
         if (checkTrade(handler.getRecipes())) {
@@ -355,19 +397,22 @@ public class AutoTrade extends Module {
         if (event.action == VillagerUpdateProfessionEvent.Action.GOT_JOB) {
             if (villager != null && workStation != null) {
                 if (villager.equals(event.entity)) {
+                    assert mc.interactionManager != null;
+                    assert mc.player != null;
                     if (event.newData.getProfession() == targetProfession.get().getProfession()) {
-                        ChatUtils.prefixInfo(PREFIX, "Villager got correct profession");
+                        sendDebugMessage("Villager got correct profession");
 
                         Rotations.rotate(Rotations.getYaw(villager), Rotations.getPitch(villager), 60, () -> {
                             state = State.CHECKING_TRADE;
+
                             mc.interactionManager.interactEntity(mc.player, villager, Hand.MAIN_HAND);
                             mc.player.swingHand(Hand.MAIN_HAND);
-                            ChatUtils.prefixInfo(PREFIX, "Request Interaction!");
+                            sendDebugMessage("Request Interaction!");
 
                         });
                     } else {
                         reset();
-                        ChatUtils.prefixInfo(PREFIX, "Reset because villager got wrong profession");
+                        sendDebugMessage("Reset because villager got wrong profession");
                     }
                 } else {
                     ChatUtils.warning("Wrong Villager!");
@@ -380,18 +425,16 @@ public class AutoTrade extends Module {
             if (villager != null && workStation != null) {
                 if (villager.equals(event.entity)) {
                     reset();
-                    ChatUtils.prefixInfo(PREFIX, "Reset because villager lost their profession");
+                    sendDebugMessage("Reset because villager lost their profession");
                 }
             }
         }
     }
 
 
-    //</editor-fold>
-
     private void toggleIfNotContinueWorking() {
         if (continueWorking.get()) {
-            ChatUtils.prefixInfo(PREFIX, "Continued because continue working is on! Might cause issues!");
+            sendDebugMessage("Continued because continue working is on! Might cause issues!");
             reset();
         } else {
             toggle();
@@ -432,46 +475,9 @@ public class AutoTrade extends Module {
         return enchs;
     }
 
-    //<editor-fold desc="Stuff. was  private in other classes...">
-
-
-    private boolean place(int x, int y, int z) {
-        setBlockPos(x, y, z);
-        BlockState blockState = mc.world.getBlockState(workStation);
-
-        if (!blockState.getMaterial().isReplaceable()) {
-            return true;
-        }
-
-        int slot = findSlot(targetProfession.get().getProfession());
-        return BlockUtils.place(workStation, Hand.MAIN_HAND, slot, true, 100, true);
-        //return BlockUtils.place(workStation, Hand.MAIN_HAND, slot, true, 100, false, true, true);
-    }
-
-    private void setBlockPos(int x, int y, int z) {
-        workStation = new BlockPos(mc.player.getX() + x, mc.player.getY() + y, mc.player.getZ() + z);
-    }
-
-    private int findSlot(VillagerProfession profession) {
-        for (int i = 0; i < 9; i++) {
-            Item item = mc.player.inventory.getStack(i).getItem();
-
-            if (!(item instanceof BlockItem)) {
-                continue;
-            }
-
-            if (item == TradeUtils.Professions.get(profession).getWorkStation()) {
-                return i;
-            }
-        }
-
-        return -1;
-    }
-
     protected Direction getDirection() {
         Direction dir;
         float yaw = mc.gameRenderer.getCamera().getYaw() % 360;
-        float pitch = mc.gameRenderer.getCamera().getPitch() % 360;
 
         if (yaw < 0) {
             yaw += 360;
@@ -530,6 +536,4 @@ public class AutoTrade extends Module {
             return z;
         }
     }
-
-    //</editor-fold>
 }
