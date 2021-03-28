@@ -522,7 +522,7 @@ public class Modules extends System<Modules> {
         add(new StashFinder());
         add(new VisualRange());
         add(new VanillaSpoof());
-        add(new MerchantTradeSelectExploitModule());
+        add(new MerchantTradeSelectExploit());
     }
 
     public static class ModuleRegistry extends Registry<Module> {
