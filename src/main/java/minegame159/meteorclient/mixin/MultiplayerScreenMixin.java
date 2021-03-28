@@ -8,7 +8,6 @@ package minegame159.meteorclient.mixin;
 import minegame159.meteorclient.accounts.gui.AccountsScreen;
 import minegame159.meteorclient.modules.Modules;
 import minegame159.meteorclient.modules.player.NameProtect;
-import minegame159.meteorclient.utils.network.ProxyScreen;
 import minegame159.meteorclient.utils.render.color.Color;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.multiplayer.MultiplayerScreen;
@@ -44,9 +43,6 @@ public class MultiplayerScreenMixin extends Screen {
 
         addButton(new ButtonWidget(this.width - 75 - 3, 3, 75, 20, new LiteralText("Accounts"), button -> {
             client.openScreen(new AccountsScreen());
-        }));
-        addButton(new ButtonWidget( this.width -156, 3, 75, 20, new LiteralText("Proxy"), button -> {
-            client.openScreen(new ProxyScreen());
         }));
     }
 
