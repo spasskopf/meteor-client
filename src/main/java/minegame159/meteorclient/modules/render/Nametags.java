@@ -96,6 +96,23 @@ public class Nametags extends Module {
             .build()
     );
 
+    private final Setting<Double> itemSpacing = sgPlayers.add(new DoubleSetting.Builder()
+            .name("item-spacing")
+            .description("The spacing between items.")
+            .defaultValue(2)
+            .min(0)
+            .sliderMax(5)
+            .max(10)
+            .build()
+    );
+
+    private final Setting<Boolean> ignoreEmpty = sgPlayers.add(new BoolSetting.Builder()
+            .name("ignore-empty")
+            .description("Doesn't add spacing where an empty item stack would be.")
+            .defaultValue(true)
+            .build()
+    );
+
     private final Setting<Boolean> displayItemEnchants = sgPlayers.add(new BoolSetting.Builder()
             .name("display-enchants")
             .description("Displays item enchantments on the items.")
@@ -123,7 +140,7 @@ public class Nametags extends Module {
     private final Setting<List<Enchantment>> displayedEnchantments = sgPlayers.add(new EnchListSetting.Builder()
             .name("displayed-enchantments")
             .description("The enchantments that are shown on nametags.")
-            .defaultValue(setDefualtList())
+            .defaultValue(setDefaultList())
             .build()
     );
 
@@ -425,7 +442,7 @@ public class Nametags extends Module {
                 ItemStack itemStack = getItem(player, i);
 
                 // Setting up widths
-                if (itemWidths[i] == 0) itemWidths[i] = 32;
+                if (itemWidths[i] == 0 && (!ignoreEmpty.get() || !itemStack.isEmpty())) itemWidths[i] = 32 + itemSpacing.get();
 
                 if (!itemStack.isEmpty()) hasItems = true;
 
@@ -607,7 +624,7 @@ public class Nametags extends Module {
         NametagUtils.end();
     }
 
-    private List<Enchantment> setDefualtList(){
+    private List<Enchantment> setDefaultList(){
         List<Enchantment> ench = new ArrayList<>();
         for (Enchantment enchantment : Registry.ENCHANTMENT) {
             ench.add(enchantment);
@@ -634,10 +651,10 @@ public class Nametags extends Module {
     }
 
     private static String ticksToTime(int ticks){
-        if(ticks > 20*3600){
+        if (ticks > 20*3600){
             int h = ticks/20/3600;
             return h+" h";
-        } else if(ticks > 20*60){
+        } else if (ticks > 20*60){
             int m = ticks/20/60;
             return m+" m";
         } else {

@@ -15,7 +15,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.nbt.CompoundTag;
 
 public class Config extends System<Config> {
-    public final Version version = new Version("0.4.1");
+    public final Version version = new Version("0.4.2");
     public String devBuild;
     private String prefix = ".";
     public GuiConfig guiConfig = new GuiConfig();
@@ -29,6 +29,8 @@ public class Config extends System<Config> {
     public boolean titleScreenCredits = true;
 
     public int rotationHoldTicks = 9;
+
+    public boolean windowTitle = false;
 
     public boolean dontSendAnyData = true;
 
@@ -63,6 +65,7 @@ public class Config extends System<Config> {
         tag.putBoolean("deleteChatCommandsInfo", deleteChatCommandsInfo);
         tag.putBoolean("sendDataToApi", sendDataToApi);
         tag.putBoolean("titleScreenCredits", titleScreenCredits);
+        tag.putBoolean("windowTitle", windowTitle);
         tag.putBoolean("dontSendAnyData", dontSendAnyData);
 
         return tag;
@@ -77,6 +80,7 @@ public class Config extends System<Config> {
         deleteChatCommandsInfo = !tag.contains("deleteChatCommandsInfo") || tag.getBoolean("deleteChatCommandsInfo");
         sendDataToApi = !tag.contains("sendDataToApi") || tag.getBoolean("sendDataToApi");
         titleScreenCredits = !tag.contains("titleScreenCredits") || tag.getBoolean("titleScreenCredits");
+        windowTitle = !tag.contains("windowTitle") || tag.getBoolean("windowTitle");
         dontSendAnyData = !tag.contains("dontSendAnyData") || tag.getBoolean("dontSendAnyData");
 
         // In 0.2.9 the default font was changed, detect when people load up 0.2.9 for the first time

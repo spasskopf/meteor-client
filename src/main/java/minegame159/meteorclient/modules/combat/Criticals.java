@@ -14,9 +14,12 @@ import minegame159.meteorclient.mixininterface.IPlayerMoveC2SPacket;
 import minegame159.meteorclient.mixininterface.IVec3d;
 import minegame159.meteorclient.modules.Categories;
 import minegame159.meteorclient.modules.Module;
+import minegame159.meteorclient.modules.Modules;
+import minegame159.meteorclient.settings.BoolSetting;
 import minegame159.meteorclient.settings.EnumSetting;
 import minegame159.meteorclient.settings.Setting;
 import minegame159.meteorclient.settings.SettingGroup;
+import net.minecraft.entity.decoration.EndCrystalEntity;
 import net.minecraft.network.packet.c2s.play.HandSwingC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerInteractEntityC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
@@ -34,6 +37,20 @@ public class Criticals extends Module {
             .name("mode")
             .description("The mode on how Criticals will function.")
             .defaultValue(Mode.Packet)
+            .build()
+    );
+
+    private final Setting<Boolean> ka = sgGeneral.add(new BoolSetting.Builder()
+            .name("only-killaura")
+            .description("Only performs crits when using killaura.")
+            .defaultValue(false)
+            .build()
+    );
+
+    private final Setting<Boolean> crystals = sgGeneral.add(new BoolSetting.Builder()
+            .name("crystals")
+            .description("Wether to crit crystals or not.")
+            .defaultValue(false)
             .build()
     );
 
@@ -56,8 +73,9 @@ public class Criticals extends Module {
 
     @EventHandler
     private void onSendPacket(PacketEvent.Send event) {
-
         if (event.packet instanceof PlayerInteractEntityC2SPacket && ((PlayerInteractEntityC2SPacket) event.packet).getType() == PlayerInteractEntityC2SPacket.InteractionType.ATTACK) {
+            if(((PlayerInteractEntityC2SPacket) event.packet).getEntity(mc.world) != Modules.get().get(KillAura.class).getTarget() && ka.get()) return;
+            if((((PlayerInteractEntityC2SPacket) event.packet).getEntity(mc.world) instanceof EndCrystalEntity) && !crystals.get()) return;
             if (skipCrit()) return;
             if (mode.get() == Mode.Packet) doPacketMode();
             else doJumpMode(event);
