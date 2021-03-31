@@ -89,7 +89,7 @@ public class DefaultSettingsWidgetFactory implements SettingsWidgetFactory {
                 continue;
             }
 
-            table.add(theme.label(setting.title));
+            table.add(theme.label(setting.title)).widget().tooltip = setting.description;
 
             Factory factory = factories.get(setting.getClass());
             if (factory != null) {
@@ -204,7 +204,7 @@ public class DefaultSettingsWidgetFactory implements SettingsWidgetFactory {
     }
 
     private void entityTypeListW(WTable table, EntityTypeListSetting setting) {
-        selectW(table, setting, null);
+        selectW(table, setting, () -> mc.openScreen(new EntityTypeListSettingScreen(theme, setting)));
     }
 
     private void enchListW(WTable table, EnchListSetting setting) {
