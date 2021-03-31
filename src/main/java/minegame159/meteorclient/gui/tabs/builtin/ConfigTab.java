@@ -126,6 +126,7 @@ public class ConfigTab extends Tab {
                     .build()
             );
 
+            s.onActivated();
             add(theme.settings(s)).expandX();
         }
     }
