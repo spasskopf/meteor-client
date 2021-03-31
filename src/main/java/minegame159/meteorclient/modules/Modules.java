@@ -413,6 +413,8 @@ public class Modules extends System<Modules> {
         add(new XCarry());
         add(new AutoGap());
         add(new AutoEat());
+        add(new AutoTrade());
+        add(new MerchantTradeSelectExploit());
     }
 
     private void initMovement() {
@@ -501,7 +503,6 @@ public class Modules extends System<Modules> {
         add(new AutoSmelter());
         add(new AutoSteal());
         add(new BuildHeight());
-        add(new AutoTrade());
         add(new BetterChat());
         add(new BookBot());
         add(new DiscordPresence());
@@ -537,8 +538,7 @@ public class Modules extends System<Modules> {
         add(new VisualRange());
         add(new VanillaSpoof());
         add(new AntiBot());
-        add(new MerchantTradeSelectExploit());
-    }
+   }
 
     public static class ModuleRegistry extends Registry<Module> {
         public ModuleRegistry() {
