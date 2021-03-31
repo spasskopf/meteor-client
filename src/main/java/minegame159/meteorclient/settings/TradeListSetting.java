@@ -1,27 +1,29 @@
 package minegame159.meteorclient.settings;
 
-import minegame159.meteorclient.gui.screens.settings.TradeListingScreen;
-import minegame159.meteorclient.gui.widgets.WButton;
-import net.minecraft.client.MinecraftClient;
+import com.mojang.serialization.Lifecycle;
+import minegame159.meteorclient.utils.entity.TradeUtils;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.registry.Registry;
+import net.minecraft.util.registry.RegistryKey;
+import org.apache.logging.log4j.core.util.ObjectArrayIterator;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.function.Consumer;
 
 public class TradeListSetting extends Setting<List<String>> {
+
+    public static final Registry<String> REGISTRY = new TradeRegistry();
 
     public TradeListSetting(String name, String description, List<String> defaultValue, Consumer<List<String>> onChanged, Consumer<Setting<List<String>>> onModuleActivated) {
         super(name, description, defaultValue, onChanged, onModuleActivated);
 
         this.value = new ArrayList<>(defaultValue);
-
-        widget = new WButton("Select");
-        ((WButton) widget).action = () -> MinecraftClient.getInstance().openScreen(new TradeListingScreen(this));
 
     }
 
@@ -34,15 +36,10 @@ public class TradeListSetting extends Setting<List<String>> {
     public void reset(boolean callbacks) {
         value = new ArrayList<>();
         if (callbacks) {
-            resetWidget();
             changed();
         }
     }
 
-    @Override
-    public void resetWidget() {
-
-    }
 
     @Override
     protected boolean isValueValid(List<String> value) {
@@ -114,4 +111,75 @@ public class TradeListSetting extends Setting<List<String>> {
         }
     }
 
+    private static class TradeRegistry extends Registry<String> {
+
+        public TradeRegistry() {
+            super(RegistryKey.ofRegistry(new Identifier("meteor-client", "villager-trades")), Lifecycle.stable());
+        }
+
+        @Nullable
+        @Override
+        public Identifier getId(String entry) {
+            return null;
+        }
+
+        @Override
+        public Optional<RegistryKey<String>> getKey(String entry) {
+            return Optional.empty();
+        }
+
+        @Override
+        public int getRawId(@Nullable String entry) {
+            return 0;
+        }
+
+        @Nullable
+        @Override
+        public String get(int index) {
+            return null;
+        }
+
+        @Nullable
+        @Override
+        public String get(@Nullable RegistryKey<String> key) {
+            return null;
+        }
+
+        @Nullable
+        @Override
+        public String get(@Nullable Identifier id) {
+            return null;
+        }
+
+        @Override
+        protected Lifecycle getEntryLifecycle(String object) {
+            return null;
+        }
+
+        @Override
+        public Lifecycle getLifecycle() {
+            return null;
+        }
+
+        @Override
+        public Set<Identifier> getIds() {
+            return null;
+        }
+
+        @Override
+        public Set<Map.Entry<RegistryKey<String>, String>> getEntries() {
+            return null;
+        }
+
+        @Override
+        public boolean containsId(Identifier id) {
+            return false;
+        }
+
+        @NotNull
+        @Override
+        public Iterator<String> iterator() {
+            return new ObjectArrayIterator<>(TradeUtils.TRADES_AS_STRING.toArray(new String[0]));
+        }
+    }
 }

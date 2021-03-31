@@ -179,6 +179,8 @@ public class AutoTrade extends Module {
 
                     sendDebugMessage("Amount: %d Emeralds!", emeralds.getCount());
                     return emeralds.getCount() <= price.get();
+                } else {
+                    return true;
                 }
 
 
