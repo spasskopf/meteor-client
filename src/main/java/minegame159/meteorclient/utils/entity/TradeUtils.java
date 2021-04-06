@@ -1,6 +1,6 @@
 package minegame159.meteorclient.utils.entity;
 
-import minegame159.meteorclient.modules.misc.AutoTrade;
+import minegame159.meteorclient.systems.modules.misc.AutoTrade;
 import minegame159.meteorclient.utils.misc.MathUtils;
 import net.minecraft.enchantment.Enchantment;
 import net.minecraft.enchantment.EnchantmentLevelEntry;

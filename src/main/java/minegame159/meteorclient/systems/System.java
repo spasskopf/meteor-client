@@ -73,7 +73,6 @@ public abstract class System<T> implements ISerializable<T> {
         return file;
     }
 
-
     @Override
     public CompoundTag toTag() {
         return null;
