@@ -12,6 +12,7 @@ package minegame159.meteorclient.systems.modules.render;
 import it.unimi.dsi.fastutil.objects.Object2BooleanMap;
 import meteordevelopment.orbit.EventHandler;
 import minegame159.meteorclient.events.render.Render2DEvent;
+import minegame159.meteorclient.events.world.TickEvent;
 import minegame159.meteorclient.rendering.DrawMode;
 import minegame159.meteorclient.rendering.Renderer;
 import minegame159.meteorclient.rendering.text.TextRenderer;
@@ -38,6 +39,8 @@ import net.minecraft.entity.*;
 import net.minecraft.entity.decoration.ItemFrameEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.registry.Registry;
 import net.minecraft.world.GameMode;
 
@@ -84,6 +87,32 @@ public class Nametags extends Module {
             .name("background")
             .description("The color of the nametag background.")
             .defaultValue(new SettingColor(0, 0, 0, 75))
+            .build()
+    );
+
+    private final Setting<Boolean> culling = sgGeneral.add(new BoolSetting.Builder()
+            .name("culling")
+            .description("Only render a certain number of nametags at a certain distance.")
+            .defaultValue(false)
+            .build()
+    );
+
+    private final Setting<Double> maxCullRange = sgGeneral.add(new DoubleSetting.Builder()
+            .name("cull-range")
+            .description("Only render nametags within this distance of your player.")
+            .defaultValue(20.0D)
+            .min(0.0D)
+            .sliderMax(200.0D)
+            .build()
+    );
+
+    private final Setting<Integer> maxCullCount = sgGeneral.add(new IntSetting.Builder()
+            .name("cull-count")
+            .description("Only render this many nametags.")
+            .defaultValue(50)
+            .min(1)
+            .sliderMin(1)
+            .sliderMax(100)
             .build()
     );
 
@@ -304,26 +333,46 @@ public class Nametags extends Module {
     private final double[] itemWidths = new double[6];
     private final Color RED = new Color(255, 15, 15);
     private final Map<Enchantment, Integer> enchantmentsToShowScale = new HashMap<>();
+    private final List<Entity> entityList = new ArrayList<>();
 
     public Nametags() {
         super(Categories.Render, "nametags", "Displays customizable nametags above players.");
     }
 
     @EventHandler
-    private void onRender2D(Render2DEvent event) {
-        boolean notFreecamActive = !Modules.get().isActive(Freecam.class);
+    private void onTick(TickEvent.Post event) {
+        entityList.clear();
 
-        for (Entity entity : mc.world.getEntities()) {
-            if (!entities.get().containsKey(entity.getType())) continue;
+        boolean freecamNotActive = !Modules.get().isActive(Freecam.class);
+        Vec3d cameraPos = mc.gameRenderer.getCamera().getPos();
+
+        mc.world.getEntities().forEach(entity -> {
             EntityType<?> type = entity.getType();
+            if (!entities.get().containsKey(type)) return;
 
             if (type == EntityType.PLAYER) {
-                if (notFreecamActive && entity == mc.cameraEntity) continue;
-                if (!yourself.get() && entity == mc.player) continue;
+                if ((!yourself.get() || freecamNotActive) && entity == mc.player) return;
             }
+
+            if (!culling.get() || entity.getPos().distanceTo(cameraPos) < maxCullRange.get()) {
+                entityList.add(entity);
+            }
+        });
+
+        entityList.sort(Comparator.comparing(e -> e.squaredDistanceTo(cameraPos)));
+    }
+
+    @EventHandler
+    private void onRender2D(Render2DEvent event) {
+        int count = getRenderCount();
+
+        for (int i = 0; i < count; i++) {
+            Entity entity = entityList.get(i);
 
             pos.set(entity, event.tickDelta);
             pos.add(0, getHeight(entity), 0);
+
+            EntityType<?> type = entity.getType();
 
             if (NametagUtils.to2D(pos, scale.get())) {
                 if (type == EntityType.PLAYER) renderNametagPlayer((PlayerEntity) entity);
@@ -333,6 +382,18 @@ public class Nametags extends Module {
                 else if (entity instanceof LivingEntity) renderGenericNametag((LivingEntity) entity);
             }
         }
+    }
+
+    private int getRenderCount() {
+        int count = culling.get() ? maxCullCount.get() : entityList.size();
+        count = MathHelper.clamp(count, 0, entityList.size());
+
+        return count;
+    }
+
+    @Override
+    public String getInfoString() {
+        return Integer.toString(getRenderCount());
     }
 
     private double getHeight(Entity entity) {

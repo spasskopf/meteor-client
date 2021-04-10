@@ -3,8 +3,9 @@
  * Copyright (c) 2021 Meteor Development.
  */
 
-package minegame159.meteorclient.gui;
+package minegame159.meteorclient.systems.proxies;
 
-public class GuiKeyEvents {
-    public static boolean canUseKeys = true;
+public enum ProxyType {
+    Socks4,
+    Socks5
 }
