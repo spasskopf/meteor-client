@@ -158,13 +158,13 @@ public class AutoFire extends Module {
             if (center.get()) {
                 PlayerUtils.centerPlayer();
             }
-            InvUtils.swap(slot);
+            mc.player.inventory.selectedSlot = slot;
             float yaw = mc.gameRenderer.getCamera().getYaw() % 360;
             float pitch = mc.gameRenderer.getCamera().getPitch() % 360;
 
             RotationUtils.packetRotate(yaw, 90);
             mc.interactionManager.interactItem(mc.player, mc.player.world, Hand.MAIN_HAND);
-            InvUtils.swap(preSlot);
+            mc.player.inventory.selectedSlot = preSlot;
             RotationUtils.packetRotate(yaw, pitch);
 
         }

@@ -161,8 +161,12 @@ public abstract class GuiTheme implements ISerializable<GuiTheme> {
         return w(new WDoubleEdit(value, sliderMin, sliderMax));
     }
 
-    public WKeybind keybind(Keybind keybind, boolean addBindText) {
-        return w(new WKeybind(keybind, addBindText));
+    public WKeybind keybind(Keybind keybind) {
+        return keybind(keybind, -1);
+    }
+
+    public WKeybind keybind(Keybind keybind, int defaultValue) {
+        return w(new WKeybind(keybind, defaultValue));
     }
 
     public WWidget settings(Settings settings, String filter) {
@@ -224,6 +228,10 @@ public abstract class GuiTheme implements ISerializable<GuiTheme> {
         config = new WindowConfig();
         windowConfigs.put(id, config);
         return config;
+    }
+
+    public void clearWindowConfigs() {
+        windowConfigs.clear();
     }
 
     protected <T extends WWidget> T w(T widget) {

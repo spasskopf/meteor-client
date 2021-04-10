@@ -34,7 +34,6 @@ import minegame159.meteorclient.utils.Utils;
 import minegame159.meteorclient.utils.misc.input.Input;
 import minegame159.meteorclient.utils.misc.input.KeyAction;
 import minegame159.meteorclient.utils.player.ChatUtils;
-import minegame159.meteorclient.utils.player.InvUtils;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -55,7 +54,8 @@ public class Modules extends System<Modules> {
     private static final List<Category> CATEGORIES = new ArrayList<>();
     public static boolean REGISTERING_CATEGORIES;
 
-    private final Map<Class<? extends Module>, Module> modules = new HashMap<>();
+    private final List<Module> modules = new ArrayList<>();
+    private final Map<Class<? extends Module>, Module> moduleInstances = new HashMap<>();
     private final Map<Category, List<Module>> groups = new HashMap<>();
 
     private final List<Module> active = new ArrayList<>();
@@ -83,6 +83,7 @@ public class Modules extends System<Modules> {
         for (List<Module> modules : groups.values()) {
             modules.sort(Comparator.comparing(o -> o.title));
         }
+        modules.sort(Comparator.comparing(o -> o.title));
     }
 
     public static void registerCategory(Category category) {
@@ -105,11 +106,11 @@ public class Modules extends System<Modules> {
 
     @SuppressWarnings("unchecked")
     public <T extends Module> T get(Class<T> klass) {
-        return (T) modules.get(klass);
+        return (T) moduleInstances.get(klass);
     }
 
     public Module get(String name) {
-        for (Module module : modules.values()) {
+        for (Module module : moduleInstances.values()) {
             if (module.name.equalsIgnoreCase(name)) return module;
         }
 
@@ -126,7 +127,15 @@ public class Modules extends System<Modules> {
     }
 
     public Collection<Module> getAll() {
-        return modules.values();
+        return moduleInstances.values();
+    }
+
+    public List<Module> getList() {
+        return modules;
+    }
+
+    public int getCount() {
+        return moduleInstances.values().size();
     }
 
     public List<Module> getActive() {
@@ -138,7 +147,7 @@ public class Modules extends System<Modules> {
     public List<Pair<Module, Integer>> searchTitles(String text) {
         List<Pair<Module, Integer>> modules = new ArrayList<>();
 
-        for (Module module : this.modules.values()) {
+        for (Module module : this.moduleInstances.values()) {
             int words = Utils.search(module.title, text);
             if (words > 0) modules.add(new Pair<>(module, words));
         }
@@ -150,7 +159,7 @@ public class Modules extends System<Modules> {
     public List<Pair<Module, Integer>> searchSettingTitles(String text) {
         List<Pair<Module, Integer>> modules = new ArrayList<>();
 
-        for (Module module : this.modules.values()) {
+        for (Module module : this.moduleInstances.values()) {
             for (SettingGroup sg : module.settings) {
                 for (Setting<?> setting : sg) {
                     int words = Utils.search(setting.title, text);
@@ -226,7 +235,7 @@ public class Modules extends System<Modules> {
 
     private void onAction(boolean isKey, int value, boolean isPress) {
         if (MinecraftClient.getInstance().currentScreen == null && !Input.isKeyPressed(GLFW.GLFW_KEY_F3)) {
-            for (Module module : modules.values()) {
+            for (Module module : moduleInstances.values()) {
                 if (module.keybind.matches(isKey, value) && (isPress || module.toggleOnBindRelease)) {
                     module.doAction();
                     module.sendToggledMsg();
@@ -239,7 +248,7 @@ public class Modules extends System<Modules> {
 
     @EventHandler(priority = EventPriority.HIGHEST + 1)
     private void onOpenScreen(OpenScreenEvent event) {
-        for (Module module : modules.values()) {
+        for (Module module : moduleInstances.values()) {
             if (module.toggleOnBindRelease) {
                 if (module.isActive()) {
                     module.toggle();
@@ -256,7 +265,6 @@ public class Modules extends System<Modules> {
                 MeteorClient.EVENT_BUS.subscribe(module);
                 module.onActivate();
             }
-            MeteorClient.EVENT_BUS.subscribe(new InvUtils());
         }
     }
 
@@ -316,21 +324,22 @@ public class Modules extends System<Modules> {
 
         // Remove the previous module with the same name
         AtomicReference<Module> removedModule = new AtomicReference<>();
-        if (modules.values().removeIf(module1 -> {
+        if (moduleInstances.values().removeIf(module1 -> {
             if (module1.name.equals(module.name)) {
                 removedModule.set(module1);
                 module1.settings.unregisterColorSettings();
-                
+
                 return true;
             }
-            
+
             return false;
         })) {
             getGroup(removedModule.get().category).remove(removedModule.get());
         }
 
         // Add the module
-        modules.put(module.getClass(), module);
+        moduleInstances.put(module.getClass(), module);
+        modules.add(module);
         getGroup(module.category).add(module);
 
         // Register color settings for the module
@@ -413,6 +422,7 @@ public class Modules extends System<Modules> {
         add(new XCarry());
         add(new AutoGap());
         add(new AutoEat());
+        add(new PotionSaver());
         add(new AutoTrade());
         add(new MerchantTradeSelectExploit());
     }
@@ -486,7 +496,7 @@ public class Modules extends System<Modules> {
         add(new Zoom());
         add(new WallHack());
         add(new WaypointsModule());
-        add(new BetterToolips());
+        add(new BetterTooltips());
     }
 
     private void initWorld() {
@@ -624,4 +634,5 @@ public class Modules extends System<Modules> {
             }
         }
     }
+
 }

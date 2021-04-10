@@ -56,12 +56,19 @@ public class Notebot extends Module {
     private final SettingGroup sgRender = settings.createGroup("Render",false);
 
     private final Setting<Integer> tickDelay = sgGeneral.add(new IntSetting.Builder()
-            .name("tickDelay")
+            .name("tick-delay")
             .description("The delay when loading a song.")
             .defaultValue(2)
             .min(0)
             .sliderMax(20)
             .build()
+    );
+
+    private final Setting<Boolean> moveNotes = sgGeneral.add(new BoolSetting.Builder()
+        .name("move-notes")
+        .description("Move notes by one tick, if multiple notes supposed to play in one tick.")
+        .defaultValue(false)
+        .build()
     );
 
     private final Setting<Boolean> render = sgRender.add(new BoolSetting.Builder()
@@ -255,7 +262,7 @@ public class Notebot extends Module {
 
     public void Play() {
         if (mc.player == null) return;
-        if (mc.player.abilities.creativeMode) {
+        if (mc.player.abilities.creativeMode && stage != Stage.Preview) {
             ChatUtils.moduleError(this, "You need to be in survival mode.");
         }
         else if (stage == Stage.Preview || stage == Stage.Playing) {
@@ -351,10 +358,14 @@ public class Notebot extends Module {
                 ChatUtils.moduleWarning(this, "Invalid character at line %d", i);
                 continue;
             }
-            if (i==data.size()-1) {
+            if (moveNotes.get() && song.containsKey(key)) {
+                song.put(key+1, val);
+                lastKey = key+1;
+            } else {
+                song.put(key,val);
                 lastKey = key;
             }
-            song.put(key,val);
+            
         }
         return true;
     }
@@ -383,8 +394,14 @@ public class Notebot extends Module {
                     ChatUtils.moduleWarning(this, "Note at tick %d out of range.", tick);
                     continue;
                 }
-                song.put(tick, n);
-                lastKey = tick;
+                if (moveNotes.get() && song.containsKey(tick)) {
+                    song.put(tick+1, n);
+                    lastKey = tick+1;
+                } else {
+                    song.put(tick,n);
+                    lastKey = tick;
+                }
+                
             }
         }
         return true;
@@ -529,6 +546,7 @@ public class Notebot extends Module {
 
     private void onTickPlay() {
         if (!isPlaying) return;
+        if (song == null) return;
         if (currentNote >= lastKey) {
             Stop();
             return;
@@ -543,15 +561,16 @@ public class Notebot extends Module {
     }
 
     private void playRotate() {
-        if (mc.interactionManager == null) {
-            currentNote++;
-            return;
-        }
-        int note = song.get(currentNote);
-        BlockPos pos = blockPositions.get(note);
+        if (mc.interactionManager == null) return;
+        try {
+            int note = song.get(currentNote);
+            BlockPos pos = blockPositions.get(note);
 
-        mc.interactionManager.attackBlock(pos,Direction.DOWN);
-        currentNote++;
+            mc.interactionManager.attackBlock(pos,Direction.DOWN);
+            currentNote++;
+        } catch (NullPointerException e) {
+            e.printStackTrace();
+        }
     }
 
     // Stolen from crystal aura :)
