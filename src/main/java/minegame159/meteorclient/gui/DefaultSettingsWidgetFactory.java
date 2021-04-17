@@ -60,6 +60,7 @@ public class DefaultSettingsWidgetFactory implements SettingsWidgetFactory {
         factories.put(SoundEventListSetting.class, (table, setting) -> soundEventListW(table, (SoundEventListSetting) setting));
         factories.put(StatusEffectSetting.class, (table, setting) -> statusEffectW(table, (StatusEffectSetting) setting));
         factories.put(StorageBlockListSetting.class, (table, setting) -> storageBlockListW(table, (StorageBlockListSetting) setting));
+        factories.put(BlockDataSetting.class, (table, setting) -> blockDataSettingW(table, (BlockDataSetting<?>) setting));
 
 
         factories.put(TradeListSetting.class, (table, setting) -> tradeListW(table, (TradeListSetting) setting));
@@ -85,27 +86,21 @@ public class DefaultSettingsWidgetFactory implements SettingsWidgetFactory {
         WTable table = section.add(theme.table()).expandX().widget();
 
         for (Setting<?> setting : group) {
-            if (!StringUtils.containsIgnoreCase(setting.title, filter)) {
-                continue;
-            }
+            if (!StringUtils.containsIgnoreCase(setting.title, filter)) continue;
 
             table.add(theme.label(setting.title)).widget().tooltip = setting.description;
 
             Factory factory = factories.get(setting.getClass());
-            if (factory != null) {
-                factory.create(table, setting);
-            }
+            if (factory != null) factory.create(table, setting);
 
             table.row();
         }
 
-        if (table.cells.isEmpty()) {
-            list.cells.remove(list.cells.size() - 1);
-        }
+        if (table.cells.isEmpty()) list.cells.remove(list.cells.size() - 1);
     }
 
-
     // Settings
+
     private void boolW(WTable table, BoolSetting setting) {
         WCheckbox checkbox = table.add(theme.checkbox(setting.get())).expandCellX().widget();
         checkbox.action = () -> setting.set(checkbox.checked);
@@ -119,9 +114,7 @@ public class DefaultSettingsWidgetFactory implements SettingsWidgetFactory {
         edit.max = setting.max;
 
         edit.actionOnRelease = () -> {
-            if (!setting.set(edit.get())) {
-                edit.set(setting.get());
-            }
+            if (!setting.set(edit.get())) edit.set(setting.get());
         };
 
         reset(table, setting, () -> edit.set(setting.get()));
@@ -136,16 +129,11 @@ public class DefaultSettingsWidgetFactory implements SettingsWidgetFactory {
         table.add(edit).expandX();
 
         Runnable action = () -> {
-            if (!setting.set(edit.get())) {
-                edit.set(setting.get());
-            }
+            if (!setting.set(edit.get())) edit.set(setting.get());
         };
 
-        if (setting.onSliderRelease) {
-            edit.actionOnRelease = action;
-        } else {
-            edit.action = action;
-        }
+        if (setting.onSliderRelease) edit.actionOnRelease = action;
+        else edit.action = action;
 
         reset(table, setting, () -> edit.set(setting.get()));
     }
@@ -190,6 +178,13 @@ public class DefaultSettingsWidgetFactory implements SettingsWidgetFactory {
         WKeybind keybind = table.add(theme.keybind(setting.get(), setting.getDefault().getValue())).expandX().widget();
         keybind.action = setting::changed;
         setting.widget = keybind;
+    }
+
+    private void genericW(WTable table, GenericSetting<?> setting) {
+        WButton edit = table.add(theme.button(GuiRenderer.EDIT)).widget();
+        edit.action = () -> mc.openScreen(setting.get().createScreen(theme));
+
+        reset(table, setting, null);
     }
 
     private void blockListW(WTable table, BlockListSetting setting) {
@@ -237,7 +232,15 @@ public class DefaultSettingsWidgetFactory implements SettingsWidgetFactory {
         selectW(table, setting, () -> mc.openScreen(new TradeListSettingScreen(theme, setting)));
     }
 
+    private void blockDataSettingW(WTable table, BlockDataSetting<?> setting) {
+        WButton button = table.add(theme.button(GuiRenderer.EDIT)).expandCellX().widget();
+        button.action = () -> mc.openScreen(new BlockDataSettingScreen(theme, setting));
+
+        reset(table, setting, null);
+    }
+
     // Other
+
     private void selectW(WTable table, Setting<?> setting, Runnable action) {
         WButton button = table.add(theme.button("Select")).expandCellX().widget();
         button.action = action;
@@ -249,9 +252,7 @@ public class DefaultSettingsWidgetFactory implements SettingsWidgetFactory {
         WButton reset = table.add(theme.button(GuiRenderer.RESET)).widget();
         reset.action = () -> {
             setting.reset();
-            if (action != null) {
-                action.run();
-            }
+            if (action != null) action.run();
         };
     }
 }
