@@ -146,10 +146,19 @@ public class ConfigTab extends Tab {
 
             sgGeneral.add(new BoolSetting.Builder()
                     .name("window-title")
-                    .description("Show Meteor in the window title.")
+                    .description("Show custom text in the window title.")
                     .defaultValue(false)
                     .onChanged(aBool -> Config.get().windowTitle = aBool)
                     .onModuleActivated(boolSetting -> boolSetting.set(Config.get().windowTitle))
+                    .build()
+            );
+
+            sgGeneral.add(new StringSetting.Builder()
+                    .name("title-text")
+                    .description("The text it displays in the window title.")
+                    .defaultValue("Meteor Client {version}")
+                    .onChanged(titleText -> Config.get().titleText = titleText)
+                    .onModuleActivated(stringSetting -> stringSetting.set(Config.get().titleText))
                     .build()
             );
 
